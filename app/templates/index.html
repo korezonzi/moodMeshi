@@ -1,0 +1,63 @@
+{% extends "base.html" %} {% block content %}
+<section class="mood-input-section">
+  <h1 class="section-title">今日の気分を教えてください</h1>
+  <form hx-post="/suggest" hx-target="#result" hx-indicator="#loading">
+    <div class="input-area">
+      <textarea
+        name="mood"
+        class="mood-textarea"
+        placeholder="今日の気分を教えてください（例：疲れていて甘いものが食べたい、友達と鍋を囲みたい...）"
+        rows="4"
+      ></textarea>
+    </div>
+
+    <div class="quick-buttons">
+      <p class="quick-label">クイック選択：</p>
+      <div class="button-group">
+        <button type="button" class="quick-btn" onclick="setMood('疲れた😮‍💨')">
+          疲れた😮‍💨
+        </button>
+        <button
+          type="button"
+          class="quick-btn"
+          onclick="setMood('元気いっぱい💪')"
+        >
+          元気いっぱい💪
+        </button>
+        <button
+          type="button"
+          class="quick-btn"
+          onclick="setMood('なんか寂しい🌧️')"
+        >
+          なんか寂しい🌧️
+        </button>
+        <button
+          type="button"
+          class="quick-btn"
+          onclick="setMood('お祝いしたい🎉')"
+        >
+          お祝いしたい🎉
+        </button>
+        <button type="button" class="quick-btn" onclick="setMood('二日酔い🍺')">
+          二日酔い🍺
+        </button>
+      </div>
+    </div>
+
+    <button type="submit" class="submit-btn">料理を提案してもらう 🔍</button>
+  </form>
+
+  <div id="loading" class="loading-indicator htmx-indicator">
+    <div class="loading-spinner"></div>
+    <p class="loading-text">3人のシェフが相談中... 少々お待ちください🍳</p>
+  </div>
+
+  <div id="result"></div>
+</section>
+
+<script>
+  function setMood(text) {
+    document.querySelector(".mood-textarea").value = text;
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,120 @@
+<div class="result-container">
+  <div class="greeting-card">
+    <p class="greeting-text">{{ result.greeting }}</p>
+  </div>
+
+  <div class="proposals-grid">
+    {% for proposal in result.proposals %}
+    <article class="recipe-card">
+      <div class="recipe-rank">
+        {% if proposal.rank == 1 %}🥇{% elif proposal.rank == 2 %}🥈{% else
+        %}🥉{% endif %} 提案 {{ proposal.rank }}
+      </div>
+
+      {% if proposal.recipe.food_image_url %}
+      <div class="recipe-image-wrapper">
+        <img
+          src="{{ proposal.recipe.food_image_url }}"
+          alt="{{ proposal.recipe.recipe_title }}"
+          class="recipe-image"
+          loading="lazy"
+        />
+      </div>
+      {% endif %}
+
+      <div class="recipe-content">
+        <h2 class="recipe-title">
+          {% if proposal.recipe.recipe_url %}
+          <a
+            href="{{ proposal.recipe.recipe_url }}"
+            target="_blank"
+            rel="noopener"
+          >
+            {{ proposal.recipe.recipe_title }}
+          </a>
+          {% else %} {{ proposal.recipe.recipe_title }} {% endif %}
+        </h2>
+
+        {% if proposal.recipe.recipe_description %}
+        <p class="recipe-description">
+          {{ proposal.recipe.recipe_description }}
+        </p>
+        {% endif %}
+
+        <div class="recipe-meta">
+          {% if proposal.recipe.recipe_indication %}
+          <span class="meta-badge time-badge"
+            >⏱️ {{ proposal.recipe.recipe_indication }}</span
+          >
+          {% endif %} {% if proposal.recipe.recipe_cost %}
+          <span class="meta-badge cost-badge"
+            >💰 {{ proposal.recipe.recipe_cost }}</span
+          >
+          {% endif %}
+        </div>
+
+        <div class="proposal-reasons">
+          <div class="reason-item">
+            <span class="reason-icon">💡</span>
+            <div>
+              <strong>おすすめ理由：</strong>
+              <p>{{ proposal.why_recommended }}</p>
+            </div>
+          </div>
+          <div class="reason-item">
+            <span class="reason-icon">🥗</span>
+            <div>
+              <strong>栄養ポイント：</strong>
+              <p>{{ proposal.nutrition_point }}</p>
+            </div>
+          </div>
+          <div class="reason-item">
+            <span class="reason-icon">🍂</span>
+            <div>
+              <strong>季節のポイント：</strong>
+              <p>{{ proposal.seasonal_point }}</p>
+            </div>
+          </div>
+          {% if proposal.arrange_tip %}
+          <div class="reason-item">
+            <span class="reason-icon">✨</span>
+            <div>
+              <strong>アレンジのヒント：</strong>
+              <p>{{ proposal.arrange_tip }}</p>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if proposal.recipe.recipe_material %}
+        <details class="ingredients-details">
+          <summary>材料を見る</summary>
+          <ul class="ingredients-list">
+            {% for ingredient in proposal.recipe.recipe_material %}
+            <li>{{ ingredient }}</li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% endif %} {% if proposal.recipe.recipe_url %}
+        <a
+          href="{{ proposal.recipe.recipe_url }}"
+          target="_blank"
+          rel="noopener"
+          class="recipe-link-btn"
+        >
+          レシピを見る →
+        </a>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  <div class="closing-message">
+    <p>{{ result.closing_message }}</p>
+  </div>
+
+  <div class="retry-section">
+    <a href="/" class="retry-link">もう一度試す 🔄</a>
+  </div>
+</div>
