@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
@@ -9,10 +10,13 @@ from app.agents.orchestrator import run_orchestrator
 
 logger = logging.getLogger(__name__)
 
+# Resolve paths relative to project root (works both locally and on Vercel)
+BASE_DIR = Path(__file__).parent.parent
+
 app = FastAPI(title="MoodMeshi", version="1.0.0")
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
+app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
+templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 
 
 @app.get("/", response_class=HTMLResponse)
