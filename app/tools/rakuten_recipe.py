@@ -4,7 +4,7 @@ import httpx
 
 from app.config import settings
 
-RAKUTEN_RECIPE_BASE_URL = "https://app.rakuten.co.jp/services/api/Recipe"
+RAKUTEN_RECIPE_BASE_URL = "https://openapi.rakuten.co.jp/recipems/api/Recipe"
 
 
 async def fetch_category_list(category_type: str = "large") -> dict:
