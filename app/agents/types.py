@@ -101,3 +101,16 @@ class FinalProposal(BaseModel):
         description="List of 3 proposed meals"
     )
     closing_message: str = Field(description="Closing message with encouragement")
+
+
+class AgentLog(BaseModel):
+    agent_name: str = Field(description="Agent display name (e.g., 'レシピハンター')")
+    role: str = Field(description="Agent's role description")
+    action: str = Field(description="What the agent did")
+    result_summary: str = Field(description="Summary of the agent's result")
+
+
+class ProcessingLog(BaseModel):
+    phase1_summary: str = Field(description="Phase 1 mood analysis summary")
+    agent_logs: list[AgentLog] = Field(description="Phase 2 per-agent logs")
+    phase3_summary: str = Field(description="Phase 3 integration summary")

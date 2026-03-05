@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.agents.orchestrator import run_orchestrator
-from app.agents.types import FinalProposal
+from app.agents.types import FinalProposal, ProcessingLog
 
 
 @pytest.fixture
@@ -114,6 +114,7 @@ async def test_orchestrator_returns_final_proposal(
         seasonal_ingredients=["大根"],
         seasonal_dishes=["鍋料理"],
         seasonal_note="冬の旬を楽しみましょう。",
+        reference_date="2026-03-05",
     )
 
     with (
@@ -126,9 +127,10 @@ async def test_orchestrator_returns_final_proposal(
         mock_anthropic.return_value = mock_client
         mock_client.messages.create = AsyncMock(side_effect=[mock_phase1, mock_phase3])
 
-        result = await run_orchestrator("疲れた")
+        result, log = await run_orchestrator("疲れた")
 
     assert isinstance(result, FinalProposal)
+    assert isinstance(log, ProcessingLog)
 
 
 @pytest.mark.asyncio
@@ -154,6 +156,7 @@ async def test_orchestrator_proposals_count(
         seasonal_ingredients=[],
         seasonal_dishes=[],
         seasonal_note="",
+        reference_date="2026-03-05",
     )
 
     with (
@@ -166,6 +169,6 @@ async def test_orchestrator_proposals_count(
         mock_anthropic.return_value = mock_client
         mock_client.messages.create = AsyncMock(side_effect=[mock_phase1, mock_phase3])
 
-        result = await run_orchestrator("疲れた")
+        result, log = await run_orchestrator("疲れた")
 
     assert len(result.proposals) == 3

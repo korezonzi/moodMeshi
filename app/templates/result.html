@@ -114,6 +114,36 @@
     <p>{{ result.closing_message }}</p>
   </div>
 
+  <!-- Processing log (toggle) -->
+  <details class="processing-log">
+    <summary class="log-summary">🔍 AIの処理ログを見る</summary>
+    <div class="log-content">
+      <div class="log-phase">
+        <h3 class="log-phase-title">Phase 1 ― 気分の分析</h3>
+        <p class="log-phase-text">{{ log.phase1_summary }}</p>
+      </div>
+
+      <div class="log-phase">
+        <h3 class="log-phase-title">
+          Phase 2 ― 3つのエージェントによる並行調査
+        </h3>
+        {% for agent in log.agent_logs %}
+        <div class="agent-log">
+          <p class="agent-name">{{ agent.agent_name }}</p>
+          <p class="agent-role">役割: {{ agent.role }}</p>
+          <p class="agent-action">実施内容: {{ agent.action }}</p>
+          <p class="agent-result">結果: {{ agent.result_summary }}</p>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="log-phase">
+        <h3 class="log-phase-title">Phase 3 ― 情報の統合と最終提案の生成</h3>
+        <p class="log-phase-text">{{ log.phase3_summary }}</p>
+      </div>
+    </div>
+  </details>
+
   <div class="retry-section">
     <a href="/" class="retry-link">もう一度試す 🔄</a>
   </div>

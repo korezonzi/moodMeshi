@@ -460,6 +460,63 @@ body {
   color: white;
 }
 
+/* Processing Log */
+.processing-log {
+  margin: 2rem 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.log-summary {
+  cursor: pointer;
+  padding: 1rem 1.5rem;
+  background: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+  list-style: none;
+  user-select: none;
+}
+.log-summary:hover {
+  background: #f1f5f9;
+}
+.log-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.log-phase-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.log-phase-text {
+  font-size: 0.9rem;
+  color: #64748b;
+  line-height: 1.7;
+}
+.agent-log {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.88rem;
+  color: #64748b;
+  line-height: 1.7;
+}
+.agent-name {
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 0.2rem;
+}
+.agent-role {
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
 /* Footer */
 .site-footer {
   text-align: center;

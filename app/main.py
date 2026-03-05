@@ -27,10 +27,10 @@ async def index(request: Request) -> HTMLResponse:
 @app.post("/suggest", response_class=HTMLResponse)
 async def suggest(request: Request, mood: str = Form(...)) -> HTMLResponse:
     try:
-        result = await run_orchestrator(mood)
+        result, processing_log = await run_orchestrator(mood)
         return templates.TemplateResponse(
             "result.html",
-            {"request": request, "result": result},
+            {"request": request, "result": result, "log": processing_log},
         )
     except Exception as e:
         logger.exception("Error in /suggest: %s", e)

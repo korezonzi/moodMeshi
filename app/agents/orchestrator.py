@@ -8,10 +8,12 @@ from app.agents.nutrition_advisor import run_nutrition_advisor
 from app.agents.recipe_hunter import run_recipe_hunter
 from app.agents.seasonal_sommelier import run_seasonal_sommelier
 from app.agents.types import (
+    AgentLog,
     FinalProposal,
     MealConstraints,
     MoodAnalysis,
     NutritionAdvice,
+    ProcessingLog,
     ProposedMeal,
     RakutenRecipe,
     RecipeHunterResult,
@@ -20,6 +22,15 @@ from app.agents.types import (
 from app.config import settings
 
 ORCHESTRATOR_MODEL = "claude-sonnet-4-20250514"
+
+CATEGORY_NAME_MAP: dict[str, str] = {
+    "30": "ご飯もの", "31": "パスタ", "32": "麺・粉物", "33": "汁物",
+    "34": "おかず(肉)", "35": "おかず(野菜)", "36": "おかず(魚)",
+    "37": "おかず(豆腐・卵)", "38": "おかず(その他)", "39": "お弁当のおかず",
+    "40": "鍋料理", "41": "サラダ", "42": "おつまみ",
+    "43": "デザート・おやつ", "44": "ドリンク", "45": "スープ",
+    "46": "パン", "47": "ピザ",
+}
 
 PHASE1_SYSTEM = """You are a mood analysis expert. Analyze the user's mood input and extract
 structured information for meal recommendation.
@@ -223,7 +234,82 @@ Seasonal information:
     )
 
 
-async def run_orchestrator(user_input: str) -> FinalProposal:
+def _build_processing_log(
+    mood: MoodAnalysis,
+    hunter: RecipeHunterResult,
+    nutrition: NutritionAdvice,
+    seasonal: SeasonalRecommendation,
+) -> ProcessingLog:
+    """Build a human-readable processing log from agent results."""
+    # Phase 1
+    cat_names = [CATEGORY_NAME_MAP.get(c, c) for c in mood.target_categories]
+    phase1 = (
+        f"ユーザーの「{mood.raw_input}」という気分をAIが分析しました。"
+        f"「{'」「'.join(mood.mood_keywords)}」というキーワードを抽出し、"
+        f"「{'」「'.join(cat_names)}」のカテゴリで料理を探すよう判断しました。"
+    )
+    if mood.constraints.max_cooking_time:
+        phase1 += f"調理時間は{mood.constraints.max_cooking_time}以内という条件も考慮しました。"
+
+    # Phase 2 — Recipe Hunter
+    searched = [CATEGORY_NAME_MAP.get(c, c) for c in hunter.searched_categories] or cat_names
+    recipe_count = len(hunter.recipes)
+    hunter_action = f"「{'」「'.join(searched)}」のカテゴリで楽天レシピの人気ランキングを検索しました"
+    hunter_result = (
+        f"{recipe_count}件のレシピが見つかりました。タイトル・材料・調理時間などの情報を収集しました。"
+        if recipe_count > 0
+        else "レシピの取得中にエラーが発生したため、AIが独自のレシピ案を生成しました。"
+    )
+
+    # Phase 2 — Nutrition Advisor
+    nutrients = "・".join(nutrition.mood_based_nutrients) if nutrition.mood_based_nutrients else "各種ビタミン"
+    ingredients = "・".join(nutrition.recommended_ingredients[:3]) if nutrition.recommended_ingredients else "バランスの良い食材"
+    nutrition_action = f"「{mood.raw_input}」という気分のときに必要な栄養素を分析しました"
+    nutrition_result = f"「{nutrients}」を重点的に補うことを推奨。{ingredients}などを使った料理が適していると判断しました。"
+
+    # Phase 2 — Seasonal Sommelier
+    season = seasonal.current_season
+    season_ingredients = "・".join(seasonal.seasonal_ingredients[:3]) if seasonal.seasonal_ingredients else "旬の食材"
+    ref_date = seasonal.reference_date if isinstance(seasonal.reference_date, str) else ""
+    seasonal_action = f"本日（{ref_date}）の季節「{season}」に合う食材を調査しました"
+    seasonal_result = f"「{season_ingredients}」などの旬の食材を使うことを推奨しました。"
+
+    agent_logs = [
+        AgentLog(
+            agent_name="🔍 レシピハンター",
+            role="楽天レシピAPIを活用してレシピを検索するエージェント",
+            action=hunter_action,
+            result_summary=hunter_result,
+        ),
+        AgentLog(
+            agent_name="🥗 栄養アドバイザー",
+            role="気分と栄養の関係を分析し、摂るべき栄養素を特定するエージェント",
+            action=nutrition_action,
+            result_summary=nutrition_result,
+        ),
+        AgentLog(
+            agent_name="🌸 季節ソムリエ",
+            role="旬の食材・料理を推奨するエージェント",
+            action=seasonal_action,
+            result_summary=seasonal_result,
+        ),
+    ]
+
+    # Phase 3
+    phase3 = (
+        f"3つのエージェントの情報を統合し、最終提案を生成しました。"
+        f"{recipe_count}件のレシピ候補から、栄養・季節・気分の3つの観点を組み合わせて3つを厳選し、"
+        f"それぞれに推奨理由・栄養ポイント・季節のポイントを付け加えました。"
+    )
+
+    return ProcessingLog(
+        phase1_summary=phase1,
+        agent_logs=agent_logs,
+        phase3_summary=phase3,
+    )
+
+
+async def run_orchestrator(user_input: str) -> tuple[FinalProposal, ProcessingLog]:
     """Orchestrator: Coordinate all workers and produce final meal proposals."""
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
@@ -246,4 +332,5 @@ async def run_orchestrator(user_input: str) -> FinalProposal:
 
     # Phase 3: Integrate results
     final_proposal = await _phase3_integrate(client, mood, hunter_result, nutrition, seasonal)
-    return final_proposal
+    processing_log = _build_processing_log(mood, hunter_result, nutrition, seasonal)
+    return final_proposal, processing_log
