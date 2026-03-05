@@ -5,8 +5,8 @@ import httpx
 from app.config import settings
 
 RAKUTEN_RECIPE_BASE_URL = "https://openapi.rakuten.co.jp/recipems/api/Recipe"
-RAKUTEN_REFERER = "https://moodmeshi.vercel.app"
-RAKUTEN_HEADERS = {"Referer": RAKUTEN_REFERER}
+RAKUTEN_ORIGIN = "https://moodmeshi.vercel.app"
+RAKUTEN_HEADERS = {"Origin": RAKUTEN_ORIGIN}
 
 
 async def fetch_category_list(category_type: str = "large") -> dict:
