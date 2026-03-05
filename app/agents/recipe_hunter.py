@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 
 import anthropic
@@ -7,7 +8,9 @@ from app.agents.types import MoodAnalysis, RakutenRecipe, RecipeHunterResult
 from app.config import settings
 from app.tools.rakuten_recipe import RAKUTEN_TOOLS, execute_tool_call
 
-MODEL = "claude-haiku-4-5-20250501"
+logger = logging.getLogger(__name__)
+
+MODEL = "claude-haiku-4-5-20251001"
 
 SYSTEM_PROMPT = """You are a recipe hunting specialist. Your job is to find the best recipes
 from Rakuten Recipe API that match the user's mood and preferences.
@@ -118,6 +121,7 @@ Search for recipes in categories that best match this mood."""
                 )
 
     except Exception as e:
+        logger.error("Recipe hunter failed: %s", e, exc_info=True)
         return RecipeHunterResult(
             recipes=[],
             searched_categories=searched_categories,

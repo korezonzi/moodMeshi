@@ -9,10 +9,10 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 RAKUTEN_RECIPE_BASE_URL = "https://openapi.rakuten.co.jp/recipems/api/Recipe"
-RAKUTEN_ORIGIN = "https://moodmeshi.vercel.app"
-RAKUTEN_HEADERS = {"Origin": RAKUTEN_ORIGIN}
 
 # Rakuten Recipe API allows ~1 req/sec; keep a safe margin
+# Origin must match the domain registered in Rakuten Developer Dashboard.
+# Set APP_ORIGIN env var for local development (e.g. http://localhost:8000).
 RAKUTEN_RATE_LIMIT_SLEEP = 1.2
 RAKUTEN_MAX_RETRIES = 2
 
@@ -29,10 +29,12 @@ async def fetch_category_ranking(category_id: str = "") -> dict:
 
     url = f"{RAKUTEN_RECIPE_BASE_URL}/CategoryRanking/20170426"
 
+    headers = {"Origin": settings.APP_ORIGIN}
+
     for attempt in range(RAKUTEN_MAX_RETRIES + 1):
         await asyncio.sleep(RAKUTEN_RATE_LIMIT_SLEEP)
         async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.get(url, params=params, headers=RAKUTEN_HEADERS)
+            response = await client.get(url, params=params, headers=headers)
 
         if response.status_code == 429 and attempt < RAKUTEN_MAX_RETRIES:
             wait = 2.0 * (attempt + 1)

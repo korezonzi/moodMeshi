@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str
     RAKUTEN_APP_ID: str
     RAKUTEN_ACCESS_KEY: str
+    # Origin header sent to Rakuten API — must match the domain registered in Rakuten Developer Dashboard
+    APP_ORIGIN: str = "https://moodmeshi.vercel.app"
 
 
 settings = Settings()

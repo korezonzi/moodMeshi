@@ -26,8 +26,13 @@ async def index(request: Request) -> HTMLResponse:
 
 @app.post("/suggest", response_class=HTMLResponse)
 async def suggest(request: Request, mood: str = Form(...)) -> HTMLResponse:
+    if not mood or not mood.strip():
+        return HTMLResponse(
+            content='<div class="error-message">気分を入力してください。</div>',
+            status_code=400,
+        )
     try:
-        result, processing_log = await run_orchestrator(mood)
+        result, processing_log = await run_orchestrator(mood.strip())
         return templates.TemplateResponse(
             "result.html",
             {"request": request, "result": result, "log": processing_log},
