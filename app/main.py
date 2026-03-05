@@ -35,7 +35,7 @@ async def suggest(request: Request, mood: str = Form(...)) -> HTMLResponse:
     except Exception as e:
         logger.exception("Error in /suggest: %s", e)
         return HTMLResponse(
-            content=f'<div class="error-message">エラーが発生しました: {e}</div>',
+            content=f'<div class="error-message">エラーが発生しました: [{type(e).__name__}] {e}</div>',
             status_code=500,
         )
 
