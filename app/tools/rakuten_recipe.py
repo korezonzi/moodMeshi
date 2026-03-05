@@ -5,6 +5,8 @@ import httpx
 from app.config import settings
 
 RAKUTEN_RECIPE_BASE_URL = "https://openapi.rakuten.co.jp/recipems/api/Recipe"
+RAKUTEN_REFERER = "https://moodmeshi.vercel.app"
+RAKUTEN_HEADERS = {"Referer": RAKUTEN_REFERER}
 
 
 async def fetch_category_list(category_type: str = "large") -> dict:
@@ -19,6 +21,7 @@ async def fetch_category_list(category_type: str = "large") -> dict:
         response = await client.get(
             f"{RAKUTEN_RECIPE_BASE_URL}/CategoryList/20170426",
             params=params,
+            headers=RAKUTEN_HEADERS,
         )
         response.raise_for_status()
         return response.json()
@@ -38,6 +41,7 @@ async def fetch_category_ranking(category_id: str = "") -> dict:
         response = await client.get(
             f"{RAKUTEN_RECIPE_BASE_URL}/CategoryRanking/20170426",
             params=params,
+            headers=RAKUTEN_HEADERS,
         )
         response.raise_for_status()
         return response.json()
