@@ -35,42 +35,11 @@ async def suggest(request: Request, mood: str = Form(...)) -> HTMLResponse:
     except Exception as e:
         logger.exception("Error in /suggest: %s", e)
         return HTMLResponse(
-            content=f'<div class="error-message">エラーが発生しました: [{type(e).__name__}] {e}</div>',
+            content=f'<div class="error-message">エラーが発生しました: {e}</div>',
             status_code=500,
         )
 
 
 @app.get("/health")
 async def health() -> dict:
-    import httpx
-    import os
-
-    anthropic_key_set = bool(os.environ.get("ANTHROPIC_API_KEY"))
-    rakuten_key_set = bool(os.environ.get("RAKUTEN_APP_ID"))
-
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.get("https://api.anthropic.com")
-            anthropic_reachable = r.status_code < 500
-    except Exception as e:
-        anthropic_reachable = f"error: {type(e).__name__}"
-
-    import anthropic as anthropic_sdk
-    try:
-        client = anthropic_sdk.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-        resp = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=10,
-            messages=[{"role": "user", "content": "hi"}],
-        )
-        anthropic_api_ok = resp.content[0].text if resp.content else "ok"
-    except Exception as e:
-        anthropic_api_ok = f"error: {type(e).__name__}: {e}"
-
-    return {
-        "status": "ok",
-        "anthropic_key_set": anthropic_key_set,
-        "rakuten_key_set": rakuten_key_set,
-        "anthropic_reachable": anthropic_reachable,
-        "anthropic_api_ok": anthropic_api_ok,
-    }
+    return {"status": "ok"}
