@@ -55,9 +55,22 @@ async def health() -> dict:
     except Exception as e:
         anthropic_reachable = f"error: {type(e).__name__}"
 
+    import anthropic as anthropic_sdk
+    try:
+        client = anthropic_sdk.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        resp = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=10,
+            messages=[{"role": "user", "content": "hi"}],
+        )
+        anthropic_api_ok = resp.content[0].text if resp.content else "ok"
+    except Exception as e:
+        anthropic_api_ok = f"error: {type(e).__name__}: {e}"
+
     return {
         "status": "ok",
         "anthropic_key_set": anthropic_key_set,
         "rakuten_key_set": rakuten_key_set,
         "anthropic_reachable": anthropic_reachable,
+        "anthropic_api_ok": anthropic_api_ok,
     }
