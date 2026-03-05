@@ -42,4 +42,22 @@ async def suggest(request: Request, mood: str = Form(...)) -> HTMLResponse:
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok"}
+    import httpx
+    import os
+
+    anthropic_key_set = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    rakuten_key_set = bool(os.environ.get("RAKUTEN_APP_ID"))
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get("https://api.anthropic.com")
+            anthropic_reachable = r.status_code < 500
+    except Exception as e:
+        anthropic_reachable = f"error: {type(e).__name__}"
+
+    return {
+        "status": "ok",
+        "anthropic_key_set": anthropic_key_set,
+        "rakuten_key_set": rakuten_key_set,
+        "anthropic_reachable": anthropic_reachable,
+    }
