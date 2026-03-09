@@ -72,23 +72,6 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
-@app.get("/health/rakuten")
-async def health_rakuten() -> dict:
-    """Temporary endpoint to verify Rakuten API connectivity from this server."""
-    from app.tools.rakuten_recipe import fetch_category_ranking
-    try:
-        data = await fetch_category_ranking(category_id="34")
-        recipes = data.get("result", [])
-        return {
-            "status": "ok",
-            "recipe_count": len(recipes),
-            "sample_title": recipes[0].get("recipeTitle") if recipes else None,
-            "app_origin": settings.APP_ORIGIN,
-        }
-    except Exception as e:
-        return {"status": "error", "message": str(e), "app_origin": settings.APP_ORIGIN}
-
-
 # Mount Slack event endpoint only when credentials are configured
 if settings.SLACK_BOT_TOKEN and settings.SLACK_SIGNING_SECRET:
     from app.slack_bot import bolt_handler
