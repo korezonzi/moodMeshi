@@ -121,18 +121,18 @@
 
   {% if result.proposals | length > 3 %}
   <div class="show-more-container" id="show-more-container">
-    <button class="show-more-btn" onclick="showMoreProposals()">
+    <button
+      class="show-more-btn"
+      onclick="
+        document.querySelectorAll('.recipe-card--hidden').forEach(function (c) {
+          c.classList.remove('recipe-card--hidden');
+        });
+        document.getElementById('show-more-container').hidden = true;
+      "
+    >
       他の候補も見る ({{ result.proposals | length - 3 }}件) ↓
     </button>
   </div>
-  <script>
-    function showMoreProposals() {
-      document.querySelectorAll(".recipe-card--hidden").forEach(function (c) {
-        c.classList.remove("recipe-card--hidden");
-      });
-      document.getElementById("show-more-container").hidden = true;
-    }
-  </script>
   {% endif %}
 
   <div class="closing-message">
