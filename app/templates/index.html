@@ -1,7 +1,7 @@
 {% extends "base.html" %} {% block content %}
 <section class="mood-input-section">
   <h1 class="section-title">今日の気分を教えてください</h1>
-  <form hx-post="/suggest" hx-target="#result" hx-indicator="#loading">
+  <form id="mood-form">
     <div class="input-area">
       <textarea
         name="mood"
@@ -12,53 +12,368 @@
       ></textarea>
     </div>
 
-    <div class="quick-buttons">
-      <p class="quick-label">クイック選択：</p>
-      <div class="button-group">
-        <button type="button" class="quick-btn" onclick="setMood('疲れた😮‍💨')">
-          疲れた😮‍💨
-        </button>
-        <button
-          type="button"
-          class="quick-btn"
-          onclick="setMood('元気いっぱい💪')"
-        >
-          元気いっぱい💪
-        </button>
-        <button
-          type="button"
-          class="quick-btn"
-          onclick="setMood('なんか寂しい🌧️')"
-        >
-          なんか寂しい🌧️
-        </button>
-        <button
-          type="button"
-          class="quick-btn"
-          onclick="setMood('お祝いしたい🎉')"
-        >
-          お祝いしたい🎉
-        </button>
-        <button type="button" class="quick-btn" onclick="setMood('二日酔い🍺')">
-          二日酔い🍺
-        </button>
+    <div class="chip-selector">
+      <p class="chip-selector-label">クイック選択</p>
+      <div class="chip-category">
+        <span class="chip-category-name">シーン</span>
+        <div class="chip-group">
+          <button
+            type="button"
+            class="chip"
+            data-category="scene"
+            data-value="一人でゆっくり"
+          >
+            一人でゆっくり
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="scene"
+            data-value="友達と"
+          >
+            友達と
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="scene"
+            data-value="家族で"
+          >
+            家族で
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="scene"
+            data-value="デートで"
+          >
+            デートで
+          </button>
+        </div>
+      </div>
+      <div class="chip-category">
+        <span class="chip-category-name">気分</span>
+        <div class="chip-group">
+          <button
+            type="button"
+            class="chip"
+            data-category="mood"
+            data-value="疲れた"
+          >
+            疲れた
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="mood"
+            data-value="元気いっぱい"
+          >
+            元気いっぱい
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="mood"
+            data-value="落ち込んでいる"
+          >
+            落ち込んでいる
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="mood"
+            data-value="お祝いしたい"
+          >
+            お祝いしたい
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="mood"
+            data-value="二日酔い"
+          >
+            二日酔い
+          </button>
+        </div>
+      </div>
+      <div class="chip-category">
+        <span class="chip-category-name">テイスト</span>
+        <div class="chip-group">
+          <button
+            type="button"
+            class="chip"
+            data-category="taste"
+            data-value="あっさり"
+          >
+            あっさり
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="taste"
+            data-value="こってり"
+          >
+            こってり
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="taste"
+            data-value="甘いもの"
+          >
+            甘いもの
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="taste"
+            data-value="辛いもの"
+          >
+            辛いもの
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="taste"
+            data-value="和食"
+          >
+            和食
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="taste"
+            data-value="洋食"
+          >
+            洋食
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="taste"
+            data-value="中華・アジア系"
+          >
+            中華・アジア系
+          </button>
+        </div>
+      </div>
+      <div class="chip-category">
+        <span class="chip-category-name">予算</span>
+        <div class="chip-group">
+          <button
+            type="button"
+            class="chip"
+            data-category="budget"
+            data-value="できるだけ安く"
+          >
+            できるだけ安く
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="budget"
+            data-value="普通に"
+          >
+            普通に
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="budget"
+            data-value="少しリッチに"
+          >
+            少しリッチに
+          </button>
+        </div>
+      </div>
+      <div class="chip-category">
+        <span class="chip-category-name">時間</span>
+        <div class="chip-group">
+          <button
+            type="button"
+            class="chip"
+            data-category="time"
+            data-value="すぐ食べたい（15分以内）"
+          >
+            すぐ食べたい
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="time"
+            data-value="普通に（30分くらい）"
+          >
+            普通に（30分）
+          </button>
+          <button
+            type="button"
+            class="chip"
+            data-category="time"
+            data-value="ゆっくり作りたい"
+          >
+            ゆっくり作りたい
+          </button>
+        </div>
       </div>
     </div>
 
-    <button type="submit" class="submit-btn">料理を提案してもらう 🔍</button>
+    <button type="submit" id="submit-btn" class="submit-btn">
+      料理を提案してもらう 🔍
+    </button>
   </form>
 
-  <div id="loading" class="loading-indicator htmx-indicator">
-    <div class="loading-spinner"></div>
-    <p class="loading-text">3人のシェフが相談中... 少々お待ちください🍳</p>
+  <div id="progress-container" class="progress-container" hidden>
+    <ul class="progress-steps">
+      <li class="step step--pending" id="step-phase1" data-phase="phase1">
+        <span class="step-icon"></span><span>気分を分析中...</span>
+      </li>
+      <li
+        class="step step--pending"
+        id="step-phase2_recipe"
+        data-phase="phase2_recipe"
+      >
+        <span class="step-icon"></span><span>レシピを探しています...</span>
+      </li>
+      <li
+        class="step step--pending"
+        id="step-phase2_nutrition"
+        data-phase="phase2_nutrition"
+      >
+        <span class="step-icon"></span><span>栄養を分析中...</span>
+      </li>
+      <li
+        class="step step--pending"
+        id="step-phase2_seasonal"
+        data-phase="phase2_seasonal"
+      >
+        <span class="step-icon"></span><span>季節の食材を確認中...</span>
+      </li>
+      <li class="step step--pending" id="step-phase3" data-phase="phase3">
+        <span class="step-icon"></span><span>最終提案を生成中...</span>
+      </li>
+    </ul>
   </div>
 
   <div id="result"></div>
 </section>
 
 <script>
-  function setMood(text) {
-    document.querySelector(".mood-textarea").value = text;
+  const PHASE_ORDER = [
+    "phase1",
+    "phase2_recipe",
+    "phase2_nutrition",
+    "phase2_seasonal",
+    "phase3",
+  ];
+
+  function setStep(phase, status) {
+    const el = document.getElementById("step-" + phase);
+    if (!el) return;
+    el.className = "step step--" + status;
   }
+
+  // Chip selector state
+  const selected = {
+    scene: new Set(),
+    mood: new Set(),
+    taste: new Set(),
+    budget: new Set(),
+    time: new Set(),
+  };
+
+  function buildMoodText() {
+    const p = [];
+    if (selected.scene.size) p.push([...selected.scene].join("・") + "で");
+    if (selected.mood.size) p.push([...selected.mood].join("・") + "気分");
+    if (selected.taste.size)
+      p.push([...selected.taste].join("や") + "が食べたい");
+    const b = [...selected.budget].filter(function (v) {
+      return v !== "普通に";
+    });
+    if (b.length) p.push(b.join("・") + "にしたい");
+    if (selected.time.size) p.push([...selected.time][0]);
+    return p.join("、");
+  }
+
+  document.querySelectorAll(".chip").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      const category = chip.dataset.category;
+      const value = chip.dataset.value;
+      if (selected[category].has(value)) {
+        selected[category].delete(value);
+        chip.classList.remove("chip--selected");
+      } else {
+        selected[category].add(value);
+        chip.classList.add("chip--selected");
+      }
+      const text = buildMoodText();
+      if (text) document.querySelector(".mood-textarea").value = text;
+    });
+  });
+
+  // SSE form submission
+  document
+    .getElementById("mood-form")
+    .addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const mood = document.querySelector(".mood-textarea").value.trim();
+      if (!mood) return;
+
+      document.getElementById("progress-container").hidden = false;
+      document.getElementById("result").innerHTML = "";
+      document.getElementById("submit-btn").disabled = true;
+      PHASE_ORDER.forEach(function (p) {
+        setStep(p, "pending");
+      });
+
+      const fd = new FormData();
+      fd.append("mood", mood);
+
+      try {
+        const response = await fetch("/suggest", { method: "POST", body: fd });
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const chunks = buffer.split("\n\n");
+          buffer = chunks.pop();
+
+          for (const chunk of chunks) {
+            if (!chunk.startsWith("data:")) continue;
+            let ev;
+            try {
+              ev = JSON.parse(chunk.replace(/^data:\s*/, ""));
+            } catch {
+              continue;
+            }
+
+            if (ev.type === "progress") {
+              setStep(ev.phase, "running");
+            } else if (ev.type === "complete") {
+              PHASE_ORDER.forEach(function (p) {
+                setStep(p, "done");
+              });
+              document.getElementById("progress-container").hidden = true;
+              document.getElementById("result").innerHTML = ev.html;
+              document.getElementById("submit-btn").disabled = false;
+            } else if (ev.type === "error") {
+              document.getElementById("progress-container").hidden = true;
+              document.getElementById("result").innerHTML =
+                '<div class="error-message">エラー: ' + ev.message + "</div>";
+              document.getElementById("submit-btn").disabled = false;
+            }
+          }
+        }
+      } catch (err) {
+        document.getElementById("progress-container").hidden = true;
+        document.getElementById("result").innerHTML =
+          '<div class="error-message">通信エラーが発生しました。</div>';
+        document.getElementById("submit-btn").disabled = false;
+      }
+    });
 </script>
 {% endblock %}

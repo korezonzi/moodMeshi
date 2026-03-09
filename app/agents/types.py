@@ -85,7 +85,7 @@ class SeasonalRecommendation(BaseModel):
 
 
 class ProposedMeal(BaseModel):
-    rank: int = Field(description="Proposal rank (1-3)")
+    rank: int = Field(description="Proposal rank (1-6)")
     recipe: RakutenRecipe = Field(description="The proposed recipe")
     why_recommended: str = Field(description="Reason for recommendation based on mood")
     nutrition_point: str = Field(description="Nutrition highlight")
@@ -98,9 +98,12 @@ class ProposedMeal(BaseModel):
 class FinalProposal(BaseModel):
     greeting: str = Field(description="Personalized greeting based on mood")
     proposals: list[ProposedMeal] = Field(
-        description="List of 3 proposed meals"
+        description="List of up to 6 proposed meals"
     )
     closing_message: str = Field(description="Closing message with encouragement")
+    context_summary: str = Field(
+        default="", description="Why these recipes were selected (2-3 sentences in Japanese)"
+    )
 
 
 class AgentLog(BaseModel):

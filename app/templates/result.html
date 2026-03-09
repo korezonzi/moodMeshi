@@ -3,12 +3,21 @@
     <p class="greeting-text">{{ result.greeting }}</p>
   </div>
 
+  {% if result.context_summary %}
+  <div class="context-summary-card">
+    <div class="context-summary-icon">💬</div>
+    <p class="context-summary-text">{{ result.context_summary }}</p>
+  </div>
+  {% endif %}
+
   <div class="proposals-grid">
     {% for proposal in result.proposals %}
-    <article class="recipe-card">
+    <article
+      class="recipe-card{% if loop.index > 3 %} recipe-card--hidden{% endif %}"
+    >
       <div class="recipe-rank">
-        {% if proposal.rank == 1 %}🥇{% elif proposal.rank == 2 %}🥈{% else
-        %}🥉{% endif %} 提案 {{ proposal.rank }}
+        {% if proposal.rank == 1 %}🥇{% elif proposal.rank == 2 %}🥈{% elif
+        proposal.rank == 3 %}🥉{% else %}🏅{% endif %} 提案 {{ proposal.rank }}
       </div>
 
       {% if proposal.recipe.food_image_url %}
@@ -109,6 +118,22 @@
     </article>
     {% endfor %}
   </div>
+
+  {% if result.proposals | length > 3 %}
+  <div class="show-more-container" id="show-more-container">
+    <button class="show-more-btn" onclick="showMoreProposals()">
+      他の候補も見る ({{ result.proposals | length - 3 }}件) ↓
+    </button>
+  </div>
+  <script>
+    function showMoreProposals() {
+      document.querySelectorAll(".recipe-card--hidden").forEach(function (c) {
+        c.classList.remove("recipe-card--hidden");
+      });
+      document.getElementById("show-more-container").hidden = true;
+    }
+  </script>
+  {% endif %}
 
   <div class="closing-message">
     <p>{{ result.closing_message }}</p>

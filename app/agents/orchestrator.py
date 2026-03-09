@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+from typing import Awaitable, Callable
 
 import anthropic
 
@@ -22,6 +23,8 @@ from app.agents.types import (
 from app.config import settings
 
 ORCHESTRATOR_MODEL = "claude-sonnet-4-20250514"
+
+ProgressCallback = Callable[[str, str], Awaitable[None]]
 
 CATEGORY_NAME_MAP: dict[str, str] = {
     "30": "ご飯もの", "31": "パスタ", "32": "麺・粉物", "33": "汁物",
@@ -60,7 +63,7 @@ Return ONLY the JSON object, no other text."""
 PHASE3_SYSTEM = """You are MoodMeshi's AI chef and meal proposal specialist.
 Your job is to synthesize information from multiple specialists and create personalized meal proposals.
 
-IMPORTANT: You MUST always return exactly 3 proposals. If no Rakuten recipes are available,
+IMPORTANT: You MUST always return exactly 6 proposals. If no Rakuten recipes are available,
 create fictional but realistic Japanese recipe proposals based on the mood, nutrition, and seasonal information.
 
 Create a final proposal in JSON format:
@@ -87,11 +90,12 @@ Create a final proposal in JSON format:
       "arrange_tip": "Optional cooking tip (in Japanese)"
     }
   ],
-  "closing_message": "Encouraging closing message (in Japanese)"
+  "closing_message": "Encouraging closing message (in Japanese)",
+  "context_summary": "なぜこれらの料理を選んだか・どの観点を重視したかを2〜3文の自然な日本語で"
 }
 
 CRITICAL RULES:
-- Always return exactly 3 proposals
+- Always return exactly 6 proposals (rank 1 through 6)
 - recipe_title and recipe_url must be strings (use empty string "" if no value, never null)
 - recipe_id must be a string (use empty string "" if no value, never null)
 - All other string fields can be null
@@ -231,6 +235,7 @@ Seasonal information:
         greeting=data.get("greeting", f"{mood.raw_input}の気分に合わせたレシピをご提案します。"),
         proposals=proposals,
         closing_message=data.get("closing_message", "今日も美味しい食事をお楽しみください！"),
+        context_summary=data.get("context_summary", ""),
     )
 
 
@@ -309,18 +314,38 @@ def _build_processing_log(
     )
 
 
-async def run_orchestrator(user_input: str) -> tuple[FinalProposal, ProcessingLog]:
+async def run_orchestrator(
+    user_input: str,
+    progress_callback: ProgressCallback | None = None,
+) -> tuple[FinalProposal, ProcessingLog]:
     """Orchestrator: Coordinate all workers and produce final meal proposals."""
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
+    async def cb(phase: str, message: str) -> None:
+        if progress_callback:
+            await progress_callback(phase, message)
+
     # Phase 1: Analyze mood
+    await cb("phase1", "気分を分析中...")
     mood = await _phase1_analyze_mood(client, user_input)
 
     # Phase 2: Run workers in parallel
+    async def run_recipe_hunter_with_cb() -> RecipeHunterResult:
+        await cb("phase2_recipe", "レシピを探しています...")
+        return await run_recipe_hunter(mood)
+
+    async def run_nutrition_advisor_with_cb() -> NutritionAdvice:
+        await cb("phase2_nutrition", "栄養を分析中...")
+        return await run_nutrition_advisor(mood)
+
+    async def run_seasonal_sommelier_with_cb() -> SeasonalRecommendation:
+        await cb("phase2_seasonal", "季節の食材を確認中...")
+        return await run_seasonal_sommelier(mood)
+
     results = await asyncio.gather(
-        run_recipe_hunter(mood),
-        run_nutrition_advisor(mood),
-        run_seasonal_sommelier(mood),
+        run_recipe_hunter_with_cb(),
+        run_nutrition_advisor_with_cb(),
+        run_seasonal_sommelier_with_cb(),
         return_exceptions=True,
     )
 
@@ -331,6 +356,7 @@ async def run_orchestrator(user_input: str) -> tuple[FinalProposal, ProcessingLo
     seasonal = results[2] if not isinstance(results[2], Exception) else _default_seasonal_recommendation()
 
     # Phase 3: Integrate results
+    await cb("phase3", "最終提案を生成中...")
     final_proposal = await _phase3_integrate(client, mood, hunter_result, nutrition, seasonal)
     processing_log = _build_processing_log(mood, hunter_result, nutrition, seasonal)
     return final_proposal, processing_log
