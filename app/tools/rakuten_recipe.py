@@ -19,17 +19,20 @@ RAKUTEN_MAX_RETRIES = 2
 
 async def fetch_category_ranking(category_id: str = "") -> dict:
     """Fetch Rakuten recipe ranking for a category, with rate-limit retry."""
-    params = {
+    params: dict = {
         "applicationId": settings.RAKUTEN_APP_ID,
-        "accessKey": settings.RAKUTEN_ACCESS_KEY,
         "formatVersion": "2",
     }
+    # accessKey is only required for browser-side (JavaScript) calls
+    if settings.RAKUTEN_ACCESS_KEY:
+        params["accessKey"] = settings.RAKUTEN_ACCESS_KEY
     if category_id:
         params["categoryId"] = category_id
 
     url = f"{RAKUTEN_RECIPE_BASE_URL}/CategoryRanking/20170426"
 
-    headers = {"Origin": settings.APP_ORIGIN}
+    # Origin header is only meaningful for browser-side requests
+    headers = {"Origin": settings.APP_ORIGIN} if settings.RAKUTEN_ACCESS_KEY else {}
 
     for attempt in range(RAKUTEN_MAX_RETRIES + 1):
         await asyncio.sleep(RAKUTEN_RATE_LIMIT_SLEEP)

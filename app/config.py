@@ -6,9 +6,13 @@ class Settings(BaseSettings):
 
     ANTHROPIC_API_KEY: str
     RAKUTEN_APP_ID: str
-    RAKUTEN_ACCESS_KEY: str
-    # Origin header sent to Rakuten API — must match the domain registered in Rakuten Developer Dashboard
+    # Legacy web-app credentials — only required for browser-side (JavaScript) calls
+    RAKUTEN_ACCESS_KEY: str = ""
     APP_ORIGIN: str = "https://moodmeshi.vercel.app"
+
+    # Slack Bot credentials (optional — leave empty to disable Slack integration)
+    SLACK_BOT_TOKEN: str = ""
+    SLACK_SIGNING_SECRET: str = ""
 
 
 settings = Settings()

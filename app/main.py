@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.agents.orchestrator import run_orchestrator
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -69,3 +70,12 @@ async def suggest(request: Request, mood: str = Form(...)) -> StreamingResponse:
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
+
+
+# Mount Slack event endpoint only when credentials are configured
+if settings.SLACK_BOT_TOKEN and settings.SLACK_SIGNING_SECRET:
+    from app.slack_bot import bolt_handler
+
+    @app.post("/slack/events")
+    async def slack_events(req: Request) -> object:
+        return await bolt_handler.handle(req)
