@@ -7,14 +7,17 @@
 [![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Slack](https://img.shields.io/badge/Slack%20Bot-対応-4A154B?logo=slack)](https://api.slack.com/)
+[![Slides](https://img.shields.io/badge/紹介スライド-GitHub%20Pages-ff6b35?logo=github)](https://korezonzi.github.io/moodMeshi/)
 
-🔗 **本番 URL**: https://moodmeshi.vercel.app
+🔗 **本番 URL**: https://moodmeshi.vercel.app  
+📊 **紹介スライド**: https://korezonzi.github.io/moodMeshi/
 
 ---
 
 ## 📖 目次
 
 - [MoodMeshiとは？](#-moodmeshiとは)
+- [紹介スライド](#-紹介スライド)
 - [2つの使い方](#-2つの使い方)
 - [システム全体像](#-システム全体像)
 - [AIエージェントの仕組み](#-aiエージェントの仕組み)
@@ -42,6 +45,30 @@ MoodMeshi は、**今の気分を伝えるだけで、AIが料理を提案して
 
 > 💡 **初めての方へ**: このアプリは「WebサイトとSlackボット」の2種類の使い方があります。
 > どちらも同じAIエンジンを使っています。
+
+---
+
+## 📊 紹介スライド
+
+サービスの概要・アーキテクチャ・技術スタックをまとめた紹介スライドを公開しています。
+
+👉 **https://korezonzi.github.io/moodMeshi/**
+
+| スライド | 内容 |
+|---------|------|
+| 01 | タイトル |
+| 02 | 課題提起 — 「今日何食べよう」問題 |
+| 03 | 解決策 — MoodMeshiとは |
+| 04 | Web入力画面（UIモック） |
+| 05 | Web結果画面（UIモック） |
+| 06 | Slackボット画面と使い方 |
+| 07 | 3フェーズ処理アーキテクチャ |
+| 08 | 並行処理の仕組み（タイムライン図） |
+| 09 | 技術スタック |
+| 10 | 設計のこだわり3選 |
+| 11 | まとめ |
+
+> ⌨️ `→` キーまたは `Space` で次のスライドへ。右上「🎬 発表モード」で全画面表示になります。
 
 ---
 
@@ -390,9 +417,11 @@ moodMeshi/
 ├── 📂 scripts/
 │   └── test_slack_endpoint.py # Slackエンドポイントの動作確認スクリプト
 │
-└── 📂 presentation/           # プレゼンテーション用スクリプト
+└── 📂 presentation/           # プレゼンテーション用
     ├── agent.py
-    └── generate.py
+    ├── generate.py
+    └── 📂 slides/
+        └── index.html         # 紹介スライド（GitHub Pages で公開中）
 ```
 
 ---
@@ -720,6 +749,6 @@ printf 'sk-ant-xxx' | vercel env add ANTHROPIC_API_KEY production
 
 **🍽️ 今日の気分に合った料理を、MoodMeshiで見つけよう**
 
-[🌐 Webアプリを使う](https://moodmeshi.vercel.app) | [📂 GitHubを見る](https://github.com/korezonzi/moodMeshi)
+[🌐 Webアプリを使う](https://moodmeshi.vercel.app) | [📊 紹介スライドを見る](https://korezonzi.github.io/moodMeshi/) | [📂 GitHubを見る](https://github.com/korezonzi/moodMeshi)
 
 </div>
