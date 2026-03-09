@@ -8,16 +8,18 @@ Handles:
 
 import asyncio
 import logging
+import re
 from typing import Any
 
 from slack_bolt.async_app import AsyncApp
 from slack_bolt.adapter.fastapi.async_handler import AsyncSlackRequestHandler
 
 from app.agents.orchestrator import run_orchestrator
-from app.agents.types import FinalProposal
+from app.agents.types import FinalProposal, ProcessingLog
 from app.config import settings
 from app.slack_formatter import (
     build_error_blocks,
+    build_log_blocks,
     build_modal_view,
     build_progress_blocks,
     build_result_blocks,
@@ -32,19 +34,19 @@ bolt_app = AsyncApp(
 )
 bolt_handler = AsyncSlackRequestHandler(bolt_app)
 
-# In-memory cache for "show more" button: "{channel}:{ts}" -> FinalProposal
-_proposal_cache: dict[str, FinalProposal] = {}
+# In-memory cache: "{channel}:{ts}" -> (FinalProposal, ProcessingLog)
+_cache: dict[str, tuple[FinalProposal, ProcessingLog]] = {}
 
 _MAX_CACHE_SIZE = 100
 
 
-def _cache_proposal(channel: str, ts: str, proposal: FinalProposal) -> None:
-    """Store a proposal and evict oldest entries when cache is full."""
+def _store_cache(channel: str, ts: str, proposal: FinalProposal, log: ProcessingLog) -> None:
+    """Store proposal + log and evict oldest entries when cache is full."""
     key = f"{channel}:{ts}"
-    if len(_proposal_cache) >= _MAX_CACHE_SIZE:
-        oldest = next(iter(_proposal_cache))
-        del _proposal_cache[oldest]
-    _proposal_cache[key] = proposal
+    if len(_cache) >= _MAX_CACHE_SIZE:
+        oldest = next(iter(_cache))
+        del _cache[oldest]
+    _cache[key] = (proposal, log)
 
 
 async def _run_and_update_via_chat(
@@ -63,10 +65,10 @@ async def _run_and_update_via_chat(
             logger.exception("Failed to update progress message")
 
     try:
-        proposal, _log = await run_orchestrator(user_input, progress_callback)
+        proposal, log = await run_orchestrator(user_input, progress_callback)
         result_blocks = build_result_blocks(proposal, show_all=False)
         await client.chat_update(channel=channel, ts=ts, blocks=result_blocks, text="提案が完成しました！")
-        _cache_proposal(channel, ts, proposal)
+        _store_cache(channel, ts, proposal, log)
     except Exception as exc:
         logger.exception("Error in _run_and_update_via_chat: %s", exc)
         try:
@@ -193,23 +195,21 @@ async def handle_show_more(ack: Any, body: dict, client: Any) -> None:
 
     channel: str = body.get("channel", {}).get("id", "")
     ts: str = body.get("message", {}).get("ts", "")
-    cache_key = f"{channel}:{ts}"
+    cached = _cache.get(f"{channel}:{ts}")
 
-    proposal = _proposal_cache.get(cache_key)
-    if proposal is None:
+    if cached is None:
         try:
             await client.chat_update(
                 channel=channel,
                 ts=ts,
-                blocks=build_error_blocks(
-                    "キャッシュが見つかりません。もう一度 /meshi を実行してください。"
-                ),
+                blocks=build_error_blocks("キャッシュが見つかりません。もう一度 /meshi を実行してください。"),
                 text="エラー",
             )
         except Exception:
             logger.exception("Failed to send cache-miss error")
         return
 
+    proposal, _log = cached
     try:
         await client.chat_update(
             channel=channel,
@@ -219,3 +219,41 @@ async def handle_show_more(ack: Any, body: dict, client: Any) -> None:
         )
     except Exception:
         logger.exception("Failed to update message for show_more")
+
+
+@bolt_app.action("moodmeshi_show_log")
+async def handle_show_log(ack: Any, body: dict, client: Any) -> None:
+    """Post the processing log as a thread reply."""
+    await ack()
+
+    channel: str = body.get("channel", {}).get("id", "")
+    ts: str = body.get("message", {}).get("ts", "")
+    cached = _cache.get(f"{channel}:{ts}")
+
+    if cached is None:
+        try:
+            await client.chat_postMessage(
+                channel=channel,
+                thread_ts=ts,
+                text="ログが見つかりません。もう一度 /meshi を実行してください。",
+            )
+        except Exception:
+            logger.exception("Failed to send log cache-miss error")
+        return
+
+    _proposal, log = cached
+    try:
+        await client.chat_postMessage(
+            channel=channel,
+            thread_ts=ts,
+            blocks=build_log_blocks(log),
+            text="処理ログ",
+        )
+    except Exception:
+        logger.exception("Failed to post log")
+
+
+@bolt_app.action(re.compile(r"moodmeshi_recipe_link_\d+"))
+async def handle_recipe_link(ack: Any) -> None:
+    """Ack recipe link button clicks (the url field handles the actual navigation)."""
+    await ack()

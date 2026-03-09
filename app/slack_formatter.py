@@ -3,7 +3,7 @@
 All functions are pure (no side effects) and return Slack Block Kit structures.
 """
 
-from app.agents.types import FinalProposal, ProposedMeal
+from app.agents.types import FinalProposal, ProcessingLog, ProposedMeal
 
 # Ordered list of phase keys matching orchestrator progress callbacks
 PHASE_ORDER = ["phase1", "phase2_recipe", "phase2_nutrition", "phase2_seasonal", "phase3"]
@@ -80,22 +80,26 @@ def build_result_blocks(proposal: FinalProposal, show_all: bool = False) -> list
         blocks.extend(_build_meal_blocks(meal))
         blocks.append({"type": "divider"})
 
+    action_buttons: list[dict] = []
+
     if not show_all and len(proposal.proposals) > 3:
-        blocks.append(
+        action_buttons.append(
             {
-                "type": "actions",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "他の3候補も見る ▼",
-                        },
-                        "action_id": "moodmeshi_show_more",
-                    }
-                ],
+                "type": "button",
+                "text": {"type": "plain_text", "text": "他の3候補も見る ▼"},
+                "action_id": "moodmeshi_show_more",
             }
         )
+
+    action_buttons.append(
+        {
+            "type": "button",
+            "text": {"type": "plain_text", "text": "処理ログを見る 📋"},
+            "action_id": "moodmeshi_show_log",
+        }
+    )
+
+    blocks.append({"type": "actions", "elements": action_buttons})
 
     blocks.append(
         {
@@ -233,6 +237,58 @@ def build_modal_view() -> dict:
             },
         ],
     }
+
+
+def build_log_blocks(log: ProcessingLog) -> list[dict]:
+    """Build processing log blocks."""
+    blocks: list[dict] = [
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": "📋 *処理ログ*"},
+        },
+        {"type": "divider"},
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*🧠 気分分析（Phase 1）*\n{log.phase1_summary}",
+            },
+        },
+        {"type": "divider"},
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": "*👥 エージェントの作業（Phase 2）*"},
+        },
+    ]
+
+    for agent in log.agent_logs:
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"*{agent.agent_name}*\n"
+                        f"_{agent.role}_\n"
+                        f"• アクション: {agent.action}\n"
+                        f"• 結果: {agent.result_summary}"
+                    ),
+                },
+            }
+        )
+
+    blocks += [
+        {"type": "divider"},
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*🤖 最終統合（Phase 3）*\n{log.phase3_summary}",
+            },
+        },
+    ]
+
+    return blocks
 
 
 def build_error_blocks(message: str = "エラーが発生しました。") -> list[dict]:
