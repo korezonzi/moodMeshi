@@ -10,7 +10,6 @@ import asyncio
 import logging
 from typing import Any
 
-import httpx
 from slack_bolt.async_app import AsyncApp
 from slack_bolt.adapter.fastapi.async_handler import AsyncSlackRequestHandler
 
@@ -46,57 +45,6 @@ def _cache_proposal(channel: str, ts: str, proposal: FinalProposal) -> None:
         oldest = next(iter(_proposal_cache))
         del _proposal_cache[oldest]
     _proposal_cache[key] = proposal
-
-
-async def _post_to_response_url(
-    response_url: str,
-    blocks: list[dict],
-    replace_original: bool = True,
-) -> None:
-    """Send blocks to a Slack response_url (used for slash command responses)."""
-    payload: dict[str, Any] = {
-        "blocks": blocks,
-        "replace_original": replace_original,
-    }
-    async with httpx.AsyncClient() as client:
-        try:
-            await client.post(response_url, json=payload, timeout=10)
-        except Exception:
-            logger.exception("Failed to post to response_url")
-
-
-async def _run_and_update_via_response_url(
-    user_input: str,
-    response_url: str,
-) -> None:
-    """Background task: run orchestrator and push progress + result to response_url."""
-
-    async def progress_callback(phase: str, _message: str) -> None:
-        blocks = build_progress_blocks(phase, user_input)
-        await _post_to_response_url(response_url, blocks, replace_original=True)
-
-    try:
-        proposal, _log = await run_orchestrator(user_input, progress_callback)
-        result_blocks = build_result_blocks(proposal, show_all=False)
-        await _post_to_response_url(response_url, result_blocks, replace_original=True)
-
-        # Store proposal so show_more can retrieve it.
-        # For response_url-based messages we don't have ts yet; use a stable key from input.
-        # The show_more handler will look up by channel:ts retrieved from the action payload.
-        # We store under a temporary key and overwrite when ts becomes available via chat_update.
-        # Simpler approach: post ephemeral, then retrieve ts from initial response.
-        # For now cache under response_url hash as fallback.
-        import hashlib
-        url_key = hashlib.md5(response_url.encode()).hexdigest()
-        _proposal_cache[url_key] = proposal
-
-    except Exception as exc:
-        logger.exception("Error in _run_and_update_via_response_url: %s", exc)
-        await _post_to_response_url(
-            response_url,
-            build_error_blocks(str(exc)),
-            replace_original=True,
-        )
 
 
 async def _run_and_update_via_chat(
@@ -141,30 +89,39 @@ async def _run_and_update_via_chat(
 async def handle_meshi_command(ack: Any, body: dict, client: Any) -> None:
     """Handle /meshi slash command.
 
-    - With text argument: immediately starts processing in background.
-    - Without text argument: opens a modal for guided input.
+    - With text argument: posts progress message to the channel, processes in background.
+    - Without text argument: opens a modal with channel_id stored in private_metadata.
     """
     await ack()
 
     user_input: str = (body.get("text") or "").strip()
-    response_url: str = body.get("response_url", "")
+    channel_id: str = body.get("channel_id", "")
 
     if not user_input:
-        # No text — open modal
+        # Store channel_id in modal so submission knows where to post
         trigger_id: str = body.get("trigger_id", "")
+        modal = build_modal_view()
+        modal["private_metadata"] = channel_id
         try:
-            await client.views_open(trigger_id=trigger_id, view=build_modal_view())
+            await client.views_open(trigger_id=trigger_id, view=modal)
         except Exception:
             logger.exception("Failed to open modal")
         return
 
-    # Send initial progress message via response_url
-    initial_blocks = build_progress_blocks("phase1", user_input)
-    await _post_to_response_url(response_url, initial_blocks, replace_original=False)
+    # Post initial progress message to the channel
+    try:
+        msg = await client.chat_postMessage(
+            channel=channel_id,
+            blocks=build_progress_blocks("phase1", user_input),
+            text="処理中...",
+        )
+        ts: str = msg["ts"]
+    except Exception:
+        logger.exception("Failed to post initial message to channel %s", channel_id)
+        return
 
-    # Kick off background processing
     asyncio.create_task(
-        _run_and_update_via_response_url(user_input, response_url)
+        _run_and_update_via_chat(user_input, channel_id, ts, client)
     )
 
 
@@ -177,14 +134,14 @@ async def handle_meshi_command(ack: Any, body: dict, client: Any) -> None:
 async def handle_modal_submission(ack: Any, body: dict, client: Any) -> None:
     """Handle submission of the mood input modal.
 
-    Extracts user input (chip takes priority over free text), opens a DM,
-    posts an initial progress message, then runs the orchestrator in background.
+    Extracts user input (chip takes priority over free text), then posts
+    the progress message to the channel stored in private_metadata.
     """
     await ack()
 
     values: dict = body.get("view", {}).get("state", {}).get("values", {})
 
-    # Chip selection takes priority
+    # Chip selection takes priority over free text
     chip_value: str | None = (
         values.get("mood_chip_block", {})
         .get("mood_chip", {})
@@ -200,31 +157,27 @@ async def handle_modal_submission(ack: Any, body: dict, client: Any) -> None:
     if not user_input:
         user_input = "なんとなく美味しいものが食べたい"
 
-    user_id: str = body.get("user", {}).get("id", "")
+    # Retrieve channel_id stored when the modal was opened
+    channel_id: str = body.get("view", {}).get("private_metadata", "")
 
-    # Open DM channel
-    try:
-        dm_response = await client.conversations_open(users=user_id)
-        channel: str = dm_response["channel"]["id"]
-    except Exception:
-        logger.exception("Failed to open DM for user %s", user_id)
+    if not channel_id:
+        logger.error("No channel_id found in modal private_metadata")
         return
 
-    # Post initial progress message
+    # Post initial progress message to the original channel
     try:
         msg = await client.chat_postMessage(
-            channel=channel,
+            channel=channel_id,
             blocks=build_progress_blocks("phase1", user_input),
             text="処理中...",
         )
         ts: str = msg["ts"]
     except Exception:
-        logger.exception("Failed to post initial message to DM")
+        logger.exception("Failed to post initial message to channel %s", channel_id)
         return
 
-    # Kick off background processing
     asyncio.create_task(
-        _run_and_update_via_chat(user_input, channel, ts, client)
+        _run_and_update_via_chat(user_input, channel_id, ts, client)
     )
 
 
