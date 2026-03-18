@@ -14,5 +14,8 @@ class Settings(BaseSettings):
     SLACK_BOT_TOKEN: str = ""
     SLACK_SIGNING_SECRET: str = ""
 
+    # Database (optional — leave empty to disable DB features)
+    DATABASE_URL: str = ""
+
 
 settings = Settings()

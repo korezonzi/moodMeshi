@@ -3,7 +3,14 @@
 All functions are pure (no side effects) and return Slack Block Kit structures.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from app.agents.types import FinalProposal, ProcessingLog, ProposedMeal
+
+if TYPE_CHECKING:
+    from app.database.repository import FavoriteMeal, SessionSummary
 
 # Ordered list of phase keys matching orchestrator progress callbacks
 PHASE_ORDER = ["phase1", "phase2_recipe", "phase2_nutrition", "phase2_seasonal", "phase3"]
@@ -114,8 +121,11 @@ def build_result_blocks(proposal: FinalProposal, show_all: bool = False) -> list
     return blocks
 
 
-def _build_meal_blocks(meal: ProposedMeal) -> list[dict]:
-    """Build Block Kit blocks for a single meal proposal."""
+def _build_meal_blocks(meal: ProposedMeal, db_meal_id: int | None = None) -> list[dict]:
+    """Build Block Kit blocks for a single meal proposal.
+
+    db_meal_id: proposed_meals.id from DB. When provided, adds a save/favorite button.
+    """
     recipe = meal.recipe
     title = recipe.recipe_title or "（タイトルなし）"
 
@@ -158,24 +168,31 @@ def _build_meal_blocks(meal: ProposedMeal) -> list[dict]:
 
     blocks: list[dict] = [section]
 
-    # Recipe link button
+    # Action buttons: recipe link and optional save button
+    action_elements: list[dict] = []
+
     if recipe.recipe_url:
-        blocks.append(
+        action_elements.append(
             {
-                "type": "actions",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "レシピを見る ↗",
-                        },
-                        "url": recipe.recipe_url,
-                        "action_id": f"moodmeshi_recipe_link_{meal.rank}",
-                    }
-                ],
+                "type": "button",
+                "text": {"type": "plain_text", "text": "レシピを見る ↗"},
+                "url": recipe.recipe_url,
+                "action_id": f"moodmeshi_recipe_link_{meal.rank}",
             }
         )
+
+    if db_meal_id is not None:
+        action_elements.append(
+            {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "⭐ 保存"},
+                "action_id": "moodmeshi_save_recipe",
+                "value": str(db_meal_id),
+            }
+        )
+
+    if action_elements:
+        blocks.append({"type": "actions", "elements": action_elements})
 
     return blocks
 
@@ -302,3 +319,213 @@ def build_error_blocks(message: str = "エラーが発生しました。") -> li
             },
         }
     ]
+
+
+def build_history_blocks(sessions: list[SessionSummary]) -> list[dict]:
+    """Build search history blocks for /meshi history."""
+    if not sessions:
+        return [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "📭 まだ検索履歴がありません。`/meshi` で料理を探してみましょう！",
+                },
+            }
+        ]
+
+    blocks: list[dict] = [
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": "📅 *最近の提案履歴*"},
+        },
+        {"type": "divider"},
+    ]
+
+    for session in sessions:
+        date_str = session.created_at.strftime("%-m/%-d %H:%M")
+        keywords = "・".join(session.mood_keywords[:3]) if session.mood_keywords else session.user_input
+        titles = "、".join(session.meal_titles[:3])
+        if len(session.meal_titles) > 3:
+            titles += " など"
+
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"📅 *{date_str}* — {keywords}\n{titles}",
+                },
+                "accessory": {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "再表示"},
+                    "action_id": "moodmeshi_reshow_session",
+                    "value": str(session.id),
+                },
+            }
+        )
+
+    return blocks
+
+
+def build_favorites_blocks(meals: list[FavoriteMeal]) -> list[dict]:
+    """Build favorited meals blocks for /meshi favorites."""
+    if not meals:
+        return [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "⭐ まだお気に入りがありません。レシピの「⭐ 保存」ボタンで追加できます！",
+                },
+            }
+        ]
+
+    blocks: list[dict] = [
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": "⭐ *お気に入りレシピ*"},
+        },
+        {"type": "divider"},
+    ]
+
+    for meal in meals:
+        date_str = meal.created_at.strftime("%-m/%-d")
+        category = f" ({meal.category_name})" if meal.category_name else ""
+        text = f"*{meal.recipe_title}*{category} — {date_str}"
+        if meal.why_recommended:
+            text += f"\n_{meal.why_recommended}_"
+
+        section: dict = {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": text},
+        }
+        if meal.food_image_url:
+            section["accessory"] = {
+                "type": "image",
+                "image_url": meal.food_image_url,
+                "alt_text": meal.recipe_title,
+            }
+        blocks.append(section)
+
+        if meal.recipe_url:
+            blocks.append(
+                {
+                    "type": "actions",
+                    "elements": [
+                        {
+                            "type": "button",
+                            "text": {"type": "plain_text", "text": "レシピを見る ↗"},
+                            "url": meal.recipe_url,
+                            "action_id": f"moodmeshi_fav_link_{meal.id}",
+                        },
+                        {
+                            "type": "button",
+                            "text": {"type": "plain_text", "text": "🗑 削除"},
+                            "action_id": "moodmeshi_save_recipe",
+                            "value": str(meal.id),
+                            "style": "danger",
+                            "confirm": {
+                                "title": {"type": "plain_text", "text": "削除しますか？"},
+                                "text": {"type": "mrkdwn", "text": "お気に入りから外します。"},
+                                "confirm": {"type": "plain_text", "text": "はい"},
+                                "deny": {"type": "plain_text", "text": "キャンセル"},
+                            },
+                        },
+                    ],
+                }
+            )
+
+        blocks.append({"type": "divider"})
+
+    return blocks
+
+
+def build_settings_blocks(
+    allergy_notes: str | None = None,
+    preference_notes: str | None = None,
+) -> list[dict]:
+    """Build user settings display blocks."""
+    allergy_text = allergy_notes or "_未設定_"
+    pref_text = preference_notes or "_未設定_"
+
+    return [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": (
+                    "⚙️ *ユーザー設定*\n\n"
+                    f"🚫 アレルギー: {allergy_text}\n"
+                    f"💚 好み: {pref_text}"
+                ),
+            },
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "✏️ 設定を変更"},
+                    "action_id": "moodmeshi_open_settings_modal",
+                    "style": "primary",
+                }
+            ],
+        },
+    ]
+
+
+def build_settings_modal_view(
+    allergy_notes: str | None = None,
+    preference_notes: str | None = None,
+) -> dict:
+    """Build the settings input modal view."""
+    return {
+        "type": "modal",
+        "callback_id": "moodmeshi_settings_modal",
+        "title": {"type": "plain_text", "text": "⚙️ ユーザー設定"},
+        "submit": {"type": "plain_text", "text": "保存"},
+        "close": {"type": "plain_text", "text": "キャンセル"},
+        "blocks": [
+            {
+                "type": "input",
+                "block_id": "allergy_block",
+                "optional": True,
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "allergy_input",
+                    "initial_value": allergy_notes or "",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "例: エビ、カニ、ナッツ",
+                    },
+                    "multiline": False,
+                },
+                "label": {"type": "plain_text", "text": "🚫 アレルギー・苦手な食材"},
+                "hint": {
+                    "type": "plain_text",
+                    "text": "次回の提案から除外されます",
+                },
+            },
+            {
+                "type": "input",
+                "block_id": "preference_block",
+                "optional": True,
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "preference_input",
+                    "initial_value": preference_notes or "",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "例: 辛い料理が好き、和食中心",
+                    },
+                    "multiline": True,
+                },
+                "label": {"type": "plain_text", "text": "💚 好みの傾向"},
+                "hint": {
+                    "type": "plain_text",
+                    "text": "提案の精度を高めるためのメモです",
+                },
+            },
+        ],
+    }

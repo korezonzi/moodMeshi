@@ -257,6 +257,13 @@
 
 <div id="result"></div>
 
+<section id="history-section" class="history-section" hidden>
+  <h2 class="section-title" style="font-size: 1.2rem; margin-top: 2rem">
+    📅 最近の提案
+  </h2>
+  <ul id="history-list" class="history-list"></ul>
+</section>
+
 <script>
   const PHASE_ORDER = [
     "phase1",
@@ -375,5 +382,52 @@
         document.getElementById("submit-btn").disabled = false;
       }
     });
+
+  // Load recent history on page load
+  (async function loadHistory() {
+    try {
+      const res = await fetch("/history");
+      if (!res.ok) return;
+      const data = await res.json();
+      const sessions = data.sessions || [];
+      if (sessions.length === 0) return;
+
+      const section = document.getElementById("history-section");
+      const list = document.getElementById("history-list");
+      section.hidden = false;
+
+      sessions.forEach(function (s) {
+        const date = new Date(s.created_at);
+        const dateStr =
+          date.getMonth() +
+          1 +
+          "/" +
+          date.getDate() +
+          " " +
+          String(date.getHours()).padStart(2, "0") +
+          ":" +
+          String(date.getMinutes()).padStart(2, "0");
+        const keywords =
+          (s.mood_keywords || []).slice(0, 3).join("・") || s.user_input;
+        const titles = (s.meal_titles || []).slice(0, 3).join("、");
+
+        const li = document.createElement("li");
+        li.className = "history-item";
+        li.innerHTML =
+          '<span class="history-date">' +
+          dateStr +
+          "</span>" +
+          '<span class="history-keywords">' +
+          keywords +
+          "</span>" +
+          '<span class="history-titles">' +
+          titles +
+          "</span>";
+        list.appendChild(li);
+      });
+    } catch (_) {
+      // History is non-critical — ignore errors
+    }
+  })();
 </script>
 {% endblock %}

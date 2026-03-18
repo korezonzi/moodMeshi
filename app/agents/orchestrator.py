@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import re
 from typing import Awaitable, Callable
 
@@ -22,7 +23,9 @@ from app.agents.types import (
 )
 from app.config import settings
 
-ORCHESTRATOR_MODEL = "claude-sonnet-4-20250514"
+logger = logging.getLogger(__name__)
+
+ORCHESTRATOR_MODEL = "claude-haiku-4-5-20251001"
 
 ProgressCallback = Callable[[str, str], Awaitable[None]]
 
@@ -317,6 +320,8 @@ def _build_processing_log(
 async def run_orchestrator(
     user_input: str,
     progress_callback: ProgressCallback | None = None,
+    user_id: str | None = None,
+    slack_channel_id: str | None = None,
 ) -> tuple[FinalProposal, ProcessingLog]:
     """Orchestrator: Coordinate all workers and produce final meal proposals."""
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
@@ -325,9 +330,23 @@ async def run_orchestrator(
         if progress_callback:
             await progress_callback(phase, message)
 
+    # Prepend user preferences to input when available
+    effective_input = user_input
+    if settings.DATABASE_URL and user_id:
+        try:
+            from app.database import repository
+            prefs = await repository.get_user_prefs(user_id)
+            if prefs:
+                if prefs.allergy_notes:
+                    effective_input += f"\n(アレルギー: {prefs.allergy_notes})"
+                if prefs.preference_notes:
+                    effective_input += f"\n(好み: {prefs.preference_notes})"
+        except Exception:
+            logger.exception("Failed to load user prefs for user %s", user_id)
+
     # Phase 1: Analyze mood
     await cb("phase1", "気分を分析中...")
-    mood = await _phase1_analyze_mood(client, user_input)
+    mood = await _phase1_analyze_mood(client, effective_input)
 
     # Phase 2: Run workers in parallel
     async def run_recipe_hunter_with_cb() -> RecipeHunterResult:
@@ -359,4 +378,19 @@ async def run_orchestrator(
     await cb("phase3", "最終提案を生成中...")
     final_proposal = await _phase3_integrate(client, mood, hunter_result, nutrition, seasonal)
     processing_log = _build_processing_log(mood, hunter_result, nutrition, seasonal)
+
+    # Persist session non-fatally
+    if settings.DATABASE_URL and user_id:
+        try:
+            from app.database import repository
+            await repository.save_session(
+                user_id=user_id,
+                user_input=user_input,
+                mood=mood,
+                proposal=final_proposal,
+                slack_channel_id=slack_channel_id,
+            )
+        except Exception:
+            logger.exception("Failed to save session for user %s", user_id)
+
     return final_proposal, processing_log

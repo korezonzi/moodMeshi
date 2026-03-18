@@ -808,3 +808,44 @@ body {
   font-size: 0.875rem;
   border-top: 1px solid var(--color-border);
 }
+
+/* History section */
+.history-section {
+  margin: 2rem auto;
+  max-width: 760px;
+  padding: 0 1rem;
+}
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.history-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  background: var(--color-surface, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 0.5rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+}
+.history-date {
+  color: var(--color-text-muted, #94a3b8);
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+.history-keywords {
+  font-weight: 600;
+  color: var(--color-primary, #7c3aed);
+  white-space: nowrap;
+}
+.history-titles {
+  color: var(--color-text, #334155);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
