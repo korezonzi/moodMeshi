@@ -11,13 +11,23 @@
   {% endif %}
 
   <div class="proposals-grid">
-    {% for proposal in result.proposals %}
+    {% for proposal in result.proposals %} {% set meal_db_id =
+    meal_id_map.get(proposal.rank) if meal_id_map is defined else none %}
     <article
       class="recipe-card{% if loop.index > 3 %} recipe-card--hidden{% endif %}"
     >
       <div class="recipe-rank">
         {% if proposal.rank == 1 %}🥇{% elif proposal.rank == 2 %}🥈{% elif
         proposal.rank == 3 %}🥉{% else %}🏅{% endif %} 提案 {{ proposal.rank }}
+        {% if meal_db_id %}
+        <button
+          class="fav-btn"
+          data-meal-id="{{ meal_db_id }}"
+          aria-label="お気に入り"
+        >
+          ♡
+        </button>
+        {% endif %}
       </div>
 
       {% if proposal.recipe.food_image_url %}

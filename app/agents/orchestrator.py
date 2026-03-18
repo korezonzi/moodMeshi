@@ -322,7 +322,7 @@ async def run_orchestrator(
     progress_callback: ProgressCallback | None = None,
     user_id: str | None = None,
     slack_channel_id: str | None = None,
-) -> tuple[FinalProposal, ProcessingLog]:
+) -> tuple[FinalProposal, ProcessingLog, int | None]:
     """Orchestrator: Coordinate all workers and produce final meal proposals."""
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
@@ -380,10 +380,11 @@ async def run_orchestrator(
     processing_log = _build_processing_log(mood, hunter_result, nutrition, seasonal)
 
     # Persist session non-fatally
+    session_id: int | None = None
     if settings.DATABASE_URL and user_id:
         try:
             from app.database import repository
-            await repository.save_session(
+            session_id = await repository.save_session(
                 user_id=user_id,
                 user_input=user_input,
                 mood=mood,
@@ -393,4 +394,4 @@ async def run_orchestrator(
         except Exception:
             logger.exception("Failed to save session for user %s", user_id)
 
-    return final_proposal, processing_log
+    return final_proposal, processing_log, session_id

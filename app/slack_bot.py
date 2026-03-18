@@ -70,7 +70,7 @@ async def _run_and_update_via_chat(
             logger.exception("Failed to update progress message")
 
     try:
-        proposal, log = await run_orchestrator(
+        proposal, log, _ = await run_orchestrator(
             user_input,
             progress_callback,
             user_id=slack_user_id,

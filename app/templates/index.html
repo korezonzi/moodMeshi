@@ -257,11 +257,18 @@
 
 <div id="result"></div>
 
+<section id="favorites-section" class="favorites-section" hidden>
+  <h2 class="section-title" style="font-size: 1.2rem; margin-top: 2rem">
+    ♥ お気に入り
+  </h2>
+  <div id="fav-cards" class="fav-cards"></div>
+</section>
+
 <section id="history-section" class="history-section" hidden>
   <h2 class="section-title" style="font-size: 1.2rem; margin-top: 2rem">
     📅 最近の提案
   </h2>
-  <ul id="history-list" class="history-list"></ul>
+  <div id="history-cards" class="history-cards"></div>
 </section>
 
 <script>
@@ -367,6 +374,8 @@
               document.getElementById("progress-container").hidden = true;
               document.getElementById("result").innerHTML = ev.html;
               document.getElementById("submit-btn").disabled = false;
+              // Re-load favorites after new results
+              loadFavorites();
             } else if (ev.type === "error") {
               document.getElementById("progress-container").hidden = true;
               document.getElementById("result").innerHTML =
@@ -383,8 +392,80 @@
       }
     });
 
-  // Load recent history on page load
-  (async function loadHistory() {
+  // Event delegation for fav-btn clicks (works even after innerHTML injection)
+  document
+    .getElementById("result")
+    .addEventListener("click", async function (e) {
+      const btn = e.target.closest(".fav-btn");
+      if (!btn) return;
+      const mealId = parseInt(btn.dataset.mealId, 10);
+      if (!mealId) return;
+      try {
+        const res = await fetch("/favorites/toggle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ meal_id: mealId }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          btn.textContent = data.is_favorited ? "♥" : "♡";
+          btn.classList.toggle("fav-btn--active", data.is_favorited);
+          loadFavorites();
+        }
+      } catch (_) {}
+    });
+
+  // Load favorites section
+  async function loadFavorites() {
+    try {
+      const res = await fetch("/favorites");
+      if (!res.ok) return;
+      const data = await res.json();
+      const meals = data.meals || [];
+      const section = document.getElementById("favorites-section");
+      const container = document.getElementById("fav-cards");
+
+      if (meals.length === 0) {
+        section.hidden = true;
+        return;
+      }
+
+      section.hidden = false;
+      container.innerHTML = "";
+      meals.forEach(function (m) {
+        const card = document.createElement("div");
+        card.className = "fav-card";
+        let inner = "";
+        if (m.food_image_url) {
+          inner +=
+            '<div class="fav-card-img-wrapper"><img src="' +
+            m.food_image_url +
+            '" alt="' +
+            m.recipe_title +
+            '" loading="lazy" /></div>';
+        }
+        const title = m.recipe_url
+          ? '<a href="' +
+            m.recipe_url +
+            '" target="_blank" rel="noopener">' +
+            m.recipe_title +
+            "</a>"
+          : m.recipe_title;
+        inner += '<div class="fav-card-body">';
+        inner += '<p class="fav-card-title">' + title + "</p>";
+        if (m.category_name) {
+          inner +=
+            '<span class="fav-card-category">' + m.category_name + "</span>";
+        }
+        inner += "</div>";
+        card.innerHTML = inner;
+        container.appendChild(card);
+      });
+    } catch (_) {}
+  }
+
+  // Load recent history as cards
+  async function loadHistory() {
     try {
       const res = await fetch("/history");
       if (!res.ok) return;
@@ -393,7 +474,7 @@
       if (sessions.length === 0) return;
 
       const section = document.getElementById("history-section");
-      const list = document.getElementById("history-list");
+      const container = document.getElementById("history-cards");
       section.hidden = false;
 
       sessions.forEach(function (s) {
@@ -409,25 +490,31 @@
           String(date.getMinutes()).padStart(2, "0");
         const keywords =
           (s.mood_keywords || []).slice(0, 3).join("・") || s.user_input;
-        const titles = (s.meal_titles || []).slice(0, 3).join("、");
+        const titles = (s.meal_titles || [])
+          .slice(0, 3)
+          .map(function (t) {
+            return "<li>" + t + "</li>";
+          })
+          .join("");
 
-        const li = document.createElement("li");
-        li.className = "history-item";
-        li.innerHTML =
-          '<span class="history-date">' +
+        const card = document.createElement("div");
+        card.className = "history-card";
+        card.innerHTML =
+          '<div class="history-card-date">' +
           dateStr +
-          "</span>" +
-          '<span class="history-keywords">' +
+          "</div>" +
+          '<div class="history-card-keywords">' +
           keywords +
-          "</span>" +
-          '<span class="history-titles">' +
+          "</div>" +
+          '<ul class="history-card-titles">' +
           titles +
-          "</span>";
-        list.appendChild(li);
+          "</ul>";
+        container.appendChild(card);
       });
-    } catch (_) {
-      // History is non-critical — ignore errors
-    }
-  })();
+    } catch (_) {}
+  }
+
+  loadHistory();
+  loadFavorites();
 </script>
 {% endblock %}

@@ -127,7 +127,7 @@ async def test_orchestrator_returns_final_proposal(
         mock_anthropic.return_value = mock_client
         mock_client.messages.create = AsyncMock(side_effect=[mock_phase1, mock_phase3])
 
-        result, log = await run_orchestrator("疲れた")
+        result, log, _ = await run_orchestrator("疲れた")
 
     assert isinstance(result, FinalProposal)
     assert isinstance(log, ProcessingLog)
@@ -169,6 +169,6 @@ async def test_orchestrator_proposals_count(
         mock_anthropic.return_value = mock_client
         mock_client.messages.create = AsyncMock(side_effect=[mock_phase1, mock_phase3])
 
-        result, log = await run_orchestrator("疲れた")
+        result, log, _ = await run_orchestrator("疲れた")
 
     assert len(result.proposals) == 3

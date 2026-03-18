@@ -9,12 +9,126 @@
   </head>
   <body>
     <header class="site-header">
-      <a href="/" class="logo">🍽️ MoodMeshi</a>
-      <p class="tagline">あなたの気分に合わせた料理を提案します</p>
+      <div class="header-inner">
+        <a href="/" class="logo">🍽️ MoodMeshi</a>
+        <p class="tagline">あなたの気分に合わせた料理を提案します</p>
+        <div class="header-actions">
+          <button id="settings-btn" class="header-icon-btn" aria-label="設定">
+            ⚙️
+          </button>
+        </div>
+      </div>
     </header>
     <main class="container">{% block content %}{% endblock %}</main>
     <footer class="site-footer">
       <p>Powered by Claude AI × Rakuten Recipe</p>
     </footer>
+
+    <!-- Settings overlay + modal -->
+    <div id="settings-overlay" class="settings-overlay" hidden></div>
+    <div
+      id="settings-modal"
+      class="settings-modal"
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-modal-title"
+    >
+      <div class="settings-modal-header">
+        <h2 id="settings-modal-title">設定</h2>
+        <button
+          id="settings-close-btn"
+          class="settings-close-btn"
+          aria-label="閉じる"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="settings-modal-body">
+        <div class="settings-field">
+          <label for="allergy-input">アレルギー・避けたい食材</label>
+          <textarea
+            id="allergy-input"
+            placeholder="例: えび、そば、ピーナッツ"
+            rows="3"
+          ></textarea>
+        </div>
+        <div class="settings-field">
+          <label for="preference-input">好み・食事制限</label>
+          <textarea
+            id="preference-input"
+            placeholder="例: 辛いものが苦手、ベジタリアン"
+            rows="3"
+          ></textarea>
+        </div>
+        <button id="settings-save-btn" class="settings-save-btn">
+          保存する
+        </button>
+        <p id="settings-status" class="settings-status"></p>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const btn = document.getElementById("settings-btn");
+        const overlay = document.getElementById("settings-overlay");
+        const modal = document.getElementById("settings-modal");
+        const closeBtn = document.getElementById("settings-close-btn");
+        const saveBtn = document.getElementById("settings-save-btn");
+        const statusEl = document.getElementById("settings-status");
+
+        function openModal() {
+          overlay.hidden = false;
+          modal.hidden = false;
+          statusEl.textContent = "";
+        }
+
+        function closeModal() {
+          overlay.hidden = true;
+          modal.hidden = true;
+        }
+
+        btn.addEventListener("click", async function () {
+          openModal();
+          try {
+            const res = await fetch("/preferences");
+            if (res.ok) {
+              const data = await res.json();
+              document.getElementById("allergy-input").value =
+                data.allergy_notes || "";
+              document.getElementById("preference-input").value =
+                data.preference_notes || "";
+            }
+          } catch (_) {}
+        });
+
+        overlay.addEventListener("click", closeModal);
+        closeBtn.addEventListener("click", closeModal);
+
+        saveBtn.addEventListener("click", async function () {
+          const allergy_notes = document.getElementById("allergy-input").value;
+          const preference_notes =
+            document.getElementById("preference-input").value;
+          try {
+            const res = await fetch("/preferences", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ allergy_notes, preference_notes }),
+            });
+            if (res.ok) {
+              statusEl.textContent = "保存しました ✓";
+              statusEl.style.color = "#16a34a";
+              setTimeout(closeModal, 800);
+            } else {
+              statusEl.textContent = "保存に失敗しました";
+              statusEl.style.color = "#dc2626";
+            }
+          } catch (_) {
+            statusEl.textContent = "通信エラーが発生しました";
+            statusEl.style.color = "#dc2626";
+          }
+        });
+      })();
+    </script>
   </body>
 </html>

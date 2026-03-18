@@ -3,11 +3,13 @@ import json
 import logging
 import uuid
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
 from app.agents.orchestrator import run_orchestrator
 from app.config import settings
@@ -56,13 +58,18 @@ async def suggest(request: Request, mood: str = Form(...)) -> StreamingResponse:
     async def event_generator():
         async def run() -> None:
             try:
-                result, log = await run_orchestrator(
+                result, log, session_id = await run_orchestrator(
                     mood.strip(),
                     progress_callback,
                     user_id=user_id,
                 )
+                meal_id_map: dict[int, int] = {}
+                if session_id and settings.DATABASE_URL:
+                    from app.database import repository
+                    meals = await repository.get_session_meals(session_id)
+                    meal_id_map = {m.rank: m.id for m in meals}
                 html = templates.env.get_template("result.html").render(
-                    result=result, log=log
+                    result=result, log=log, meal_id_map=meal_id_map
                 )
                 await queue.put({"type": "complete", "html": html})
             except Exception as e:
@@ -121,6 +128,57 @@ async def history(request: Request) -> JSONResponse:
         for s in sessions
     ]
     return JSONResponse({"sessions": data})
+
+
+class FavoriteToggleRequest(BaseModel):
+    meal_id: int
+
+
+@app.post("/favorites/toggle")
+async def favorites_toggle(request: Request, body: FavoriteToggleRequest) -> JSONResponse:
+    """Toggle favorite state for a meal."""
+    if not settings.DATABASE_URL:
+        return JSONResponse({"is_favorited": False})
+
+    from app.database import repository
+    new_state = await repository.toggle_favorite(body.meal_id)
+    return JSONResponse({"is_favorited": new_state})
+
+
+@app.get("/preferences")
+async def get_preferences(request: Request) -> JSONResponse:
+    """Return current user preferences."""
+    if not settings.DATABASE_URL:
+        return JSONResponse({"allergy_notes": None, "preference_notes": None})
+
+    user_id, _ = _get_or_create_user_id(request)
+    from app.database import repository
+    prefs = await repository.get_user_prefs(user_id)
+    return JSONResponse({
+        "allergy_notes": prefs.allergy_notes if prefs else None,
+        "preference_notes": prefs.preference_notes if prefs else None,
+    })
+
+
+class PreferencesRequest(BaseModel):
+    allergy_notes: str
+    preference_notes: str
+
+
+@app.post("/preferences")
+async def save_preferences(request: Request, body: PreferencesRequest) -> JSONResponse:
+    """Save user preferences."""
+    if not settings.DATABASE_URL:
+        return JSONResponse({"ok": False})
+
+    user_id, _ = _get_or_create_user_id(request)
+    from app.database import repository
+    ok = await repository.upsert_user_prefs(
+        user_id,
+        allergy_notes=body.allergy_notes or None,
+        preference_notes=body.preference_notes or None,
+    )
+    return JSONResponse({"ok": ok})
 
 
 @app.get("/favorites")
