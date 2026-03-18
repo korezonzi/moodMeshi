@@ -54,19 +54,19 @@ MoodMeshi は、**今の気分を伝えるだけで、AIが料理を提案して
 
 👉 **https://korezonzi.github.io/moodMeshi/**
 
-| スライド | 内容 |
-|---------|------|
-| 01 | タイトル |
-| 02 | 課題提起 — 「今日何食べよう」問題 |
-| 03 | 解決策 — MoodMeshiとは |
-| 04 | Web入力画面（UIモック） |
-| 05 | Web結果画面（UIモック） |
-| 06 | Slackボット画面と使い方 |
-| 07 | 3フェーズ処理アーキテクチャ |
-| 08 | 並行処理の仕組み（タイムライン図） |
-| 09 | 技術スタック |
-| 10 | 設計のこだわり3選 |
-| 11 | まとめ |
+| スライド | 内容                               |
+| -------- | ---------------------------------- |
+| 01       | タイトル                           |
+| 02       | 課題提起 — 「今日何食べよう」問題  |
+| 03       | 解決策 — MoodMeshiとは             |
+| 04       | Web入力画面（UIモック）            |
+| 05       | Web結果画面（UIモック）            |
+| 06       | Slackボット画面と使い方            |
+| 07       | 3フェーズ処理アーキテクチャ        |
+| 08       | 並行処理の仕組み（タイムライン図） |
+| 09       | 技術スタック                       |
+| 10       | 設計のこだわり3選                  |
+| 11       | まとめ                             |
 
 > ⌨️ `→` キーまたは `Space` で次のスライドへ。右上「🎬 発表モード」で全画面表示になります。
 
@@ -239,12 +239,12 @@ Phase 3:                  [最終提案────────]
 
 ### コマンドの使い方
 
-| 操作 | 方法 |
-|------|------|
-| 気分を指定して提案 | `/meshi 疲れた` |
-| モーダルから入力 | `/meshi`（引数なし） |
-| 残り3候補を表示 | 結果メッセージの「他の3候補も見る ▼」ボタン |
-| 処理ログを見る | 結果メッセージの「処理ログ 📋」ボタン |
+| 操作               | 方法                                        |
+| ------------------ | ------------------------------------------- |
+| 気分を指定して提案 | `/meshi 疲れた`                             |
+| モーダルから入力   | `/meshi`（引数なし）                        |
+| 残り3候補を表示    | 結果メッセージの「他の3候補も見る ▼」ボタン |
+| 処理ログを見る     | 結果メッセージの「処理ログ 📋」ボタン       |
 
 ### Slackボットの処理フロー
 
@@ -340,16 +340,16 @@ sequenceDiagram
 
 ### 主要ライブラリ一覧
 
-| カテゴリ | ライブラリ | 役割 |
-|----------|-----------|------|
-| **Webフレームワーク** | FastAPI + Uvicorn | APIサーバー |
-| **LLM** | anthropic >= 0.40 | Claude API クライアント |
-| **Slackボット** | slack-bolt >= 1.21 | Slack イベント処理 |
-| **HTTPクライアント** | httpx + aiohttp | 非同期HTTP通信 |
-| **テンプレート** | Jinja2 | HTMLレンダリング |
-| **バリデーション** | Pydantic v2 | データ型チェック |
-| **設定管理** | pydantic-settings | 環境変数の読み込み |
-| **テスト** | pytest + pytest-asyncio | テスト実行 |
+| カテゴリ              | ライブラリ              | 役割                    |
+| --------------------- | ----------------------- | ----------------------- |
+| **Webフレームワーク** | FastAPI + Uvicorn       | APIサーバー             |
+| **LLM**               | anthropic >= 0.40       | Claude API クライアント |
+| **Slackボット**       | slack-bolt >= 1.21      | Slack イベント処理      |
+| **HTTPクライアント**  | httpx + aiohttp         | 非同期HTTP通信          |
+| **テンプレート**      | Jinja2                  | HTMLレンダリング        |
+| **バリデーション**    | Pydantic v2             | データ型チェック        |
+| **設定管理**          | pydantic-settings       | 環境変数の読み込み      |
+| **テスト**            | pytest + pytest-asyncio | テスト実行              |
 
 ### Claudeモデルの使い分け
 
@@ -432,13 +432,13 @@ moodMeshi/
 
 事前に以下のアカウント・APIキーを取得してください。
 
-| 必要なもの | 取得場所 | 用途 |
-|------------|---------|------|
-| **Python 3.12+** | [python.org](https://www.python.org/) | 実行環境 |
-| **Anthropic API Key** | [console.anthropic.com](https://console.anthropic.com/) | Claude AI |
-| **楽天アプリID** | [webservice.rakuten.co.jp](https://webservice.rakuten.co.jp/) | レシピ検索 |
-| **Slack Bot Token** *(任意)* | [api.slack.com](https://api.slack.com/apps) | Slackボット |
-| **Slack Signing Secret** *(任意)* | 同上 | Slackボット認証 |
+| 必要なもの                        | 取得場所                                                      | 用途            |
+| --------------------------------- | ------------------------------------------------------------- | --------------- |
+| **Python 3.12+**                  | [python.org](https://www.python.org/)                         | 実行環境        |
+| **Anthropic API Key**             | [console.anthropic.com](https://console.anthropic.com/)       | Claude AI       |
+| **楽天アプリID**                  | [webservice.rakuten.co.jp](https://webservice.rakuten.co.jp/) | レシピ検索      |
+| **Slack Bot Token** _(任意)_      | [api.slack.com](https://api.slack.com/apps)                   | Slackボット     |
+| **Slack Signing Secret** _(任意)_ | 同上                                                          | Slackボット認証 |
 
 > ⚠️ Slack関連の設定は省略可能です。設定しない場合、Webアプリのみ動作します。
 

@@ -155,7 +155,7 @@ async def _phase1_analyze_mood(client: anthropic.AsyncAnthropic, user_input: str
         raw_input=user_input,
         mood_keywords=data.get("mood_keywords", []),
         food_keywords=data.get("food_keywords", []),
-        target_categories=data.get("target_categories", ["34", "35"]),
+        target_categories=[str(c) for c in data.get("target_categories", ["34", "35"])],
         constraints=constraints,
     )
 
