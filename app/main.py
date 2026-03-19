@@ -106,6 +106,19 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/health/rakuten")
+async def health_rakuten() -> JSONResponse:
+    """Test Rakuten Recipe API connectivity."""
+    try:
+        from app.tools.rakuten_recipe import fetch_category_ranking
+        result = await fetch_category_ranking(category_id="34")
+        count = len(result.get("result", []))
+        return JSONResponse({"ok": True, "recipe_count": count, "sample_title": result.get("result", [{}])[0].get("recipeTitle", "") if count > 0 else None})
+    except Exception as e:
+        logger.exception("Rakuten API health check failed")
+        return JSONResponse({"ok": False, "error": str(e)})
+
+
 @app.get("/health/db")
 async def health_db() -> JSONResponse:
     """Check database connectivity and return detailed status for debugging."""
