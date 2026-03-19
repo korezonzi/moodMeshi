@@ -106,28 +106,40 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/health/db")
+async def health_db() -> JSONResponse:
+    """Check database connectivity and return detailed status for debugging."""
+    if not settings.DATABASE_URL:
+        return JSONResponse({"ok": False, "error": "DATABASE_URL is not set"})
+    from app.database.connection import check_db_connection
+    ok, error = await check_db_connection()
+    return JSONResponse({"ok": ok, "error": error or None, "url_prefix": settings.DATABASE_URL[:30] + "..."})
+
+
 @app.get("/history")
 async def history(request: Request) -> JSONResponse:
     """Return recent search sessions for the current web user."""
     if not settings.DATABASE_URL:
         return JSONResponse({"sessions": []})
 
-    user_id, _ = _get_or_create_user_id(request)
-
-    from app.database import repository
-    sessions = await repository.get_recent_sessions(user_id, limit=5)
-
-    data = [
-        {
-            "id": s.id,
-            "user_input": s.user_input,
-            "mood_keywords": s.mood_keywords,
-            "created_at": s.created_at.isoformat(),
-            "meal_titles": s.meal_titles,
-        }
-        for s in sessions
-    ]
-    return JSONResponse({"sessions": data})
+    try:
+        user_id, _ = _get_or_create_user_id(request)
+        from app.database import repository
+        sessions = await repository.get_recent_sessions(user_id, limit=5)
+        data = [
+            {
+                "id": s.id,
+                "user_input": s.user_input,
+                "mood_keywords": s.mood_keywords,
+                "created_at": s.created_at.isoformat(),
+                "meal_titles": s.meal_titles,
+            }
+            for s in sessions
+        ]
+        return JSONResponse({"sessions": data})
+    except Exception as e:
+        logger.exception("Error in GET /history: %s", e)
+        return JSONResponse({"sessions": [], "error": str(e)})
 
 
 class FavoriteToggleRequest(BaseModel):
@@ -140,9 +152,13 @@ async def favorites_toggle(request: Request, body: FavoriteToggleRequest) -> JSO
     if not settings.DATABASE_URL:
         return JSONResponse({"is_favorited": False})
 
-    from app.database import repository
-    new_state = await repository.toggle_favorite(body.meal_id)
-    return JSONResponse({"is_favorited": new_state})
+    try:
+        from app.database import repository
+        new_state = await repository.toggle_favorite(body.meal_id)
+        return JSONResponse({"is_favorited": new_state})
+    except Exception as e:
+        logger.exception("Error in POST /favorites/toggle: %s", e)
+        return JSONResponse({"is_favorited": False, "error": str(e)})
 
 
 @app.get("/preferences")
@@ -151,14 +167,18 @@ async def get_preferences(request: Request) -> JSONResponse:
     if not settings.DATABASE_URL:
         return JSONResponse({"allergy_notes": None, "preference_notes": None, "db_available": False})
 
-    user_id, _ = _get_or_create_user_id(request)
-    from app.database import repository
-    prefs = await repository.get_user_prefs(user_id)
-    return JSONResponse({
-        "allergy_notes": prefs.allergy_notes if prefs else None,
-        "preference_notes": prefs.preference_notes if prefs else None,
-        "db_available": True,
-    })
+    try:
+        user_id, _ = _get_or_create_user_id(request)
+        from app.database import repository
+        prefs = await repository.get_user_prefs(user_id)
+        return JSONResponse({
+            "allergy_notes": prefs.allergy_notes if prefs else None,
+            "preference_notes": prefs.preference_notes if prefs else None,
+            "db_available": True,
+        })
+    except Exception as e:
+        logger.exception("Error in GET /preferences: %s", e)
+        return JSONResponse({"allergy_notes": None, "preference_notes": None, "db_available": False, "error": str(e)})
 
 
 class PreferencesRequest(BaseModel):
@@ -172,14 +192,18 @@ async def save_preferences(request: Request, body: PreferencesRequest) -> JSONRe
     if not settings.DATABASE_URL:
         return JSONResponse({"ok": False})
 
-    user_id, _ = _get_or_create_user_id(request)
-    from app.database import repository
-    ok = await repository.upsert_user_prefs(
-        user_id,
-        allergy_notes=body.allergy_notes or None,
-        preference_notes=body.preference_notes or None,
-    )
-    return JSONResponse({"ok": ok})
+    try:
+        user_id, _ = _get_or_create_user_id(request)
+        from app.database import repository
+        ok = await repository.upsert_user_prefs(
+            user_id,
+            allergy_notes=body.allergy_notes or None,
+            preference_notes=body.preference_notes or None,
+        )
+        return JSONResponse({"ok": ok})
+    except Exception as e:
+        logger.exception("Error in POST /preferences: %s", e)
+        return JSONResponse({"ok": False, "error": str(e)})
 
 
 @app.get("/favorites")
@@ -188,24 +212,26 @@ async def favorites(request: Request) -> JSONResponse:
     if not settings.DATABASE_URL:
         return JSONResponse({"meals": []})
 
-    user_id, _ = _get_or_create_user_id(request)
-
-    from app.database import repository
-    meals = await repository.get_favorited_meals(user_id)
-
-    data = [
-        {
-            "id": m.id,
-            "recipe_title": m.recipe_title,
-            "recipe_url": m.recipe_url,
-            "food_image_url": m.food_image_url,
-            "why_recommended": m.why_recommended,
-            "category_name": m.category_name,
-            "created_at": m.created_at.isoformat(),
-        }
-        for m in meals
-    ]
-    return JSONResponse({"meals": data})
+    try:
+        user_id, _ = _get_or_create_user_id(request)
+        from app.database import repository
+        meals = await repository.get_favorited_meals(user_id)
+        data = [
+            {
+                "id": m.id,
+                "recipe_title": m.recipe_title,
+                "recipe_url": m.recipe_url,
+                "food_image_url": m.food_image_url,
+                "why_recommended": m.why_recommended,
+                "category_name": m.category_name,
+                "created_at": m.created_at.isoformat(),
+            }
+            for m in meals
+        ]
+        return JSONResponse({"meals": data})
+    except Exception as e:
+        logger.exception("Error in GET /favorites: %s", e)
+        return JSONResponse({"meals": [], "error": str(e)})
 
 
 # Mount Slack event endpoint only when credentials are configured

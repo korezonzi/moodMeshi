@@ -1,11 +1,15 @@
 """Async SQLAlchemy engine and session factory."""
 
+import logging
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 _engine = None
 _session_factory = None
@@ -27,13 +31,30 @@ def _normalize_db_url(url: str) -> str:
 def _get_engine():
     global _engine
     if _engine is None and settings.DATABASE_URL:
-        _engine = create_async_engine(
-            _normalize_db_url(settings.DATABASE_URL),
-            # NullPool is required for serverless environments (Vercel) where
-            # persistent connection pools cannot be maintained across invocations.
-            poolclass=NullPool,
-        )
+        try:
+            _engine = create_async_engine(
+                _normalize_db_url(settings.DATABASE_URL),
+                # NullPool is required for serverless environments (Vercel) where
+                # persistent connection pools cannot be maintained across invocations.
+                poolclass=NullPool,
+            )
+        except Exception:
+            logger.exception("Failed to create database engine")
     return _engine
+
+
+async def check_db_connection() -> tuple[bool, str]:
+    """Test DB connectivity. Returns (is_ok, error_message)."""
+    factory = _get_session_factory()
+    if factory is None:
+        return False, "DATABASE_URL not configured or engine creation failed"
+    try:
+        async with factory() as session:
+            await session.execute(text("SELECT 1"))
+        return True, ""
+    except Exception as e:
+        logger.exception("DB connection check failed")
+        return False, str(e)
 
 
 def _get_session_factory():
