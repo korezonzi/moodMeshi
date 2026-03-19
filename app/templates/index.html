@@ -260,6 +260,7 @@
 <section id="favorites-section" class="favorites-section" hidden>
   <h2 class="section-title" style="font-size: 1.2rem; margin-top: 2rem">
     ♥ お気に入り
+    <span class="db-badge">🗄 DB</span>
   </h2>
   <div id="fav-cards" class="fav-cards"></div>
 </section>
@@ -267,6 +268,7 @@
 <section id="history-section" class="history-section" hidden>
   <h2 class="section-title" style="font-size: 1.2rem; margin-top: 2rem">
     📅 最近の提案
+    <span class="db-badge">🗄 DB</span>
   </h2>
   <div id="history-cards" class="history-cards"></div>
 </section>
@@ -398,7 +400,12 @@
     .addEventListener("click", async function (e) {
       const btn = e.target.closest(".fav-btn");
       if (!btn) return;
-      const mealId = parseInt(btn.dataset.mealId, 10);
+      const mealIdStr = btn.dataset.mealId;
+      if (!mealIdStr) {
+        showToast("お気に入り機能にはDB接続が必要です", "warn");
+        return;
+      }
+      const mealId = parseInt(mealIdStr, 10);
       if (!mealId) return;
       try {
         const res = await fetch("/favorites/toggle", {
@@ -408,11 +415,19 @@
         });
         if (res.ok) {
           const data = await res.json();
-          btn.textContent = data.is_favorited ? "♥" : "♡";
-          btn.classList.toggle("fav-btn--active", data.is_favorited);
-          loadFavorites();
+          if (data.is_favorited !== undefined) {
+            btn.textContent = data.is_favorited ? "♥" : "♡";
+            btn.classList.toggle("fav-btn--active", data.is_favorited);
+            const msg = data.is_favorited
+              ? "♥ お気に入りに追加しました（DB保存済み）"
+              : "♡ お気に入りを解除しました";
+            showToast(msg, data.is_favorited ? "success" : "info");
+            loadFavorites();
+          }
         }
-      } catch (_) {}
+      } catch (_) {
+        showToast("通信エラーが発生しました", "error");
+      }
     });
 
   // Load favorites section

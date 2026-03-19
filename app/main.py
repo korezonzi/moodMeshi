@@ -149,7 +149,7 @@ async def favorites_toggle(request: Request, body: FavoriteToggleRequest) -> JSO
 async def get_preferences(request: Request) -> JSONResponse:
     """Return current user preferences."""
     if not settings.DATABASE_URL:
-        return JSONResponse({"allergy_notes": None, "preference_notes": None})
+        return JSONResponse({"allergy_notes": None, "preference_notes": None, "db_available": False})
 
     user_id, _ = _get_or_create_user_id(request)
     from app.database import repository
@@ -157,6 +157,7 @@ async def get_preferences(request: Request) -> JSONResponse:
     return JSONResponse({
         "allergy_notes": prefs.allergy_notes if prefs else None,
         "preference_notes": prefs.preference_notes if prefs else None,
+        "db_available": True,
     })
 
 

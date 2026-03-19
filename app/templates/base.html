@@ -24,6 +24,9 @@
       <p>Powered by Claude AI × Rakuten Recipe</p>
     </footer>
 
+    <!-- Toast notification -->
+    <div id="toast-msg" class="toast-msg" hidden role="alert"></div>
+
     <!-- Settings overlay + modal -->
     <div id="settings-overlay" class="settings-overlay" hidden></div>
     <div
@@ -45,6 +48,14 @@
         </button>
       </div>
       <div class="settings-modal-body">
+        <p class="settings-db-note">
+          <span
+            id="settings-db-indicator"
+            class="db-indicator db-indicator--loading"
+            >⏳ DB確認中...</span
+          >
+          設定はデータベースに保存され、次回の提案に自動で反映されます。
+        </p>
         <div class="settings-field">
           <label for="allergy-input">アレルギー・避けたい食材</label>
           <textarea
@@ -69,6 +80,18 @@
     </div>
 
     <script>
+      // Global toast notification
+      function showToast(msg, type) {
+        const el = document.getElementById("toast-msg");
+        el.textContent = msg;
+        el.className = "toast-msg toast-msg--" + (type || "info");
+        el.hidden = false;
+        clearTimeout(el._timer);
+        el._timer = setTimeout(function () {
+          el.hidden = true;
+        }, 3000);
+      }
+
       (function () {
         const btn = document.getElementById("settings-btn");
         const overlay = document.getElementById("settings-overlay");
@@ -76,6 +99,7 @@
         const closeBtn = document.getElementById("settings-close-btn");
         const saveBtn = document.getElementById("settings-save-btn");
         const statusEl = document.getElementById("settings-status");
+        const dbIndicator = document.getElementById("settings-db-indicator");
 
         function openModal() {
           overlay.hidden = false;
@@ -90,6 +114,8 @@
 
         btn.addEventListener("click", async function () {
           openModal();
+          dbIndicator.textContent = "⏳ DB確認中...";
+          dbIndicator.className = "db-indicator db-indicator--loading";
           try {
             const res = await fetch("/preferences");
             if (res.ok) {
@@ -98,8 +124,21 @@
                 data.allergy_notes || "";
               document.getElementById("preference-input").value =
                 data.preference_notes || "";
+              if (data.db_available) {
+                dbIndicator.textContent = "🗄 DB接続済み";
+                dbIndicator.className = "db-indicator db-indicator--ok";
+              } else {
+                dbIndicator.textContent = "⚠️ DB未設定";
+                dbIndicator.className = "db-indicator db-indicator--warn";
+              }
+            } else {
+              dbIndicator.textContent = "❌ DB接続エラー";
+              dbIndicator.className = "db-indicator db-indicator--error";
             }
-          } catch (_) {}
+          } catch (_) {
+            dbIndicator.textContent = "❌ 通信エラー";
+            dbIndicator.className = "db-indicator db-indicator--error";
+          }
         });
 
         overlay.addEventListener("click", closeModal);
@@ -109,19 +148,26 @@
           const allergy_notes = document.getElementById("allergy-input").value;
           const preference_notes =
             document.getElementById("preference-input").value;
+          statusEl.textContent = "保存中...";
+          statusEl.style.color = "var(--color-text-muted)";
           try {
             const res = await fetch("/preferences", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ allergy_notes, preference_notes }),
             });
-            if (res.ok) {
-              statusEl.textContent = "保存しました ✓";
+            const data = await res.json();
+            if (data.ok) {
+              statusEl.textContent = "✓ データベースに保存しました";
               statusEl.style.color = "#16a34a";
-              setTimeout(closeModal, 800);
+              dbIndicator.textContent = "🗄 DB接続済み";
+              dbIndicator.className = "db-indicator db-indicator--ok";
+              setTimeout(closeModal, 1000);
             } else {
-              statusEl.textContent = "保存に失敗しました";
+              statusEl.textContent = "DB未設定のため保存できません";
               statusEl.style.color = "#dc2626";
+              dbIndicator.textContent = "⚠️ DB未設定";
+              dbIndicator.className = "db-indicator db-indicator--warn";
             }
           } catch (_) {
             statusEl.textContent = "通信エラーが発生しました";
