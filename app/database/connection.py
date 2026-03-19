@@ -3,6 +3,7 @@
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 
@@ -10,14 +11,27 @@ _engine = None
 _session_factory = None
 
 
+def _normalize_db_url(url: str) -> str:
+    """Normalize DATABASE_URL to use asyncpg driver.
+
+    Vercel Postgres / Supabase / Render issue urls as postgres:// or postgresql://
+    but asyncpg requires the postgresql+asyncpg:// scheme.
+    """
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
+
+
 def _get_engine():
     global _engine
     if _engine is None and settings.DATABASE_URL:
         _engine = create_async_engine(
-            settings.DATABASE_URL,
-            pool_pre_ping=True,
-            pool_size=5,
-            max_overflow=10,
+            _normalize_db_url(settings.DATABASE_URL),
+            # NullPool is required for serverless environments (Vercel) where
+            # persistent connection pools cannot be maintained across invocations.
+            poolclass=NullPool,
         )
     return _engine
 
