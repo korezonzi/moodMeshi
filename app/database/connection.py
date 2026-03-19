@@ -37,6 +37,9 @@ def _get_engine():
                 # NullPool is required for serverless environments (Vercel) where
                 # persistent connection pools cannot be maintained across invocations.
                 poolclass=NullPool,
+                # statement_cache_size=0 disables asyncpg prepared statements,
+                # required for compatibility with Supabase pgBouncer transaction mode.
+                connect_args={"statement_cache_size": 0},
             )
         except Exception:
             logger.exception("Failed to create database engine")
