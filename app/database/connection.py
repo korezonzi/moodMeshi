@@ -46,6 +46,17 @@ def _get_engine():
     return _engine
 
 
+async def init_tables() -> None:
+    """Create all tables from ORM models if they don't exist."""
+    from app.database.models import Base
+
+    engine = _get_engine()
+    if engine is None:
+        raise RuntimeError("DATABASE_URL is not configured")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
 async def check_db_connection() -> tuple[bool, str]:
     """Test DB connectivity. Returns (is_ok, error_message)."""
     factory = _get_session_factory()

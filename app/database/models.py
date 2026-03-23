@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy import BigInteger, Boolean, ForeignKey, Integer, Text, func
-from sqlalchemy.dialects.postgresql import ARRAY, TIMESTAMPTZ
+from sqlalchemy.dialects.postgresql import ARRAY, TIMESTAMP
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -17,9 +17,9 @@ class UserPreference(Base):
     user_id: Mapped[str] = mapped_column(Text, primary_key=True)
     allergy_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     preference_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMPTZ, server_default=func.now(), onupdate=func.now()
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
 
@@ -35,7 +35,7 @@ class SearchSession(Base):
     greeting: Mapped[str | None] = mapped_column(Text, nullable=True)
     closing_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     context_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
     meals: Mapped[list["ProposedMealRecord"]] = relationship(
         "ProposedMealRecord", back_populates="session", cascade="all, delete-orphan"
@@ -63,6 +63,6 @@ class ProposedMealRecord(Base):
     seasonal_point: Mapped[str | None] = mapped_column(Text, nullable=True)
     arrange_tip: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_favorited: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
     session: Mapped["SearchSession"] = relationship("SearchSession", back_populates="meals")
