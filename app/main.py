@@ -27,7 +27,11 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("index.html", {"request": request})
+    try:
+        return templates.TemplateResponse("index.html", {"request": request})
+    except Exception as e:
+        logger.exception("Error rendering index template")
+        return HTMLResponse(f"Template error: {e}", status_code=500)
 
 
 _WEB_USER_COOKIE = "moodmeshi_uid"
